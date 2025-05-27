@@ -1,7 +1,9 @@
-
 import { Link } from 'react-router-dom';
 
 const Home = () => {
+  const userRole = localStorage.getItem('userRole');
+  const isLoggedIn = !!userRole;
+
   return (
     <div className="space-y-12">
       {/* Hero Section */}
@@ -13,10 +15,10 @@ const Home = () => {
           Cung cấp dịch vụ xét nghiệm ADN chính xác, nhanh chóng và bảo mật
         </p>
         <Link 
-          to="/appointment" 
+          to={isLoggedIn ? "/appointment" : "/customer/login"} 
           className="inline-block bg-blue-600 text-white px-8 py-3 rounded-md hover:bg-blue-700 transition-colors"
         >
-          Đặt lịch ngay
+          {isLoggedIn ? "Đặt lịch ngay" : "Đăng nhập để đặt lịch"}
         </Link>
       </section>
 

@@ -11,11 +11,15 @@ import Results from './pages/Results';
 import Profile from './pages/Profile';
 import UserManagement from './pages/UserManagement';
 import AppointmentManagement from './pages/AppointmentManagement';
-import Login from './pages/Login';
 import AdminLogin from './pages/AdminLogin';
 import StaffLogin from './pages/StaffLogin';
+import CustomerLogin from './pages/CustomerLogin';
 import AdminRegister from './pages/AdminRegister';
-
+import CustomerRegister from './pages/CustomerRegister';
+import StaffRegister from './pages/StaffRegister';
+import VerifyEmail from './pages/VerifyEmail';
+import CustomerVerifyEmail from './pages/CustomerVerifyEmail';
+import StaffVerifyEmail from './pages/StaffVerifyEmail';
 
 const queryClient = new QueryClient();
 
@@ -25,10 +29,15 @@ function App() {
       <Router>
         <Routes>
           {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
+          <Route path="/customer/login" element={<CustomerLogin />} />
+          <Route path="/customer/register" element={<CustomerRegister />} />
+          <Route path="/customer/verify-email" element={<CustomerVerifyEmail />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/staff/login" element={<StaffLogin />} />
+          <Route path="/staff/register" element={<StaffRegister />} />
+          <Route path="/staff/verify-email" element={<StaffVerifyEmail />} />
           <Route path="/admin/register" element={<AdminRegister />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/" element={<Layout><Home /></Layout>} />
           <Route path="/services" element={<Layout><Services /></Layout>} />
           <Route path="/blog" element={<Layout><Blog /></Layout>} />
@@ -77,12 +86,12 @@ function App() {
             } 
           />
 
-          {/* Staff & Admin Routes */}
+          {/* Staff Routes */}
           <Route 
             path="/staff/appointments" 
             element={
               <AdminLayout>
-                <ProtectedRoute allowedRoles={['staff', 'admin']}>
+                <ProtectedRoute allowedRoles={['staff']}>
                   <AppointmentManagement />
                 </ProtectedRoute>
               </AdminLayout>

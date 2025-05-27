@@ -1,18 +1,19 @@
 import httpClient from "../../httpClient/httpClient";
 import { apiLinks } from "../MainService";
 
-interface User {
-    user: { [key: string]: string | number };
+interface VerifyEmailRequest {
+    userId: number;
+    verificationCode: string;
 }
 
-export const register = async ({ user }: User) => {
+export const verifyEmail = async (data: VerifyEmailRequest) => {
     try {
       const response = await httpClient.post({
-        url: apiLinks.Auth.register,
-        data: user,
+        url: apiLinks.Auth.verification,
+        data: data,
       });
       return response.data;
     } catch (error: unknown) {
       throw error; 
     }
-  };
+  }; 

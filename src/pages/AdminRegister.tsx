@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
 import { register } from '../Services/AuthService/RegisterService';
 import type { ResponseModel } from '../model/responseModel';
 
@@ -13,36 +14,60 @@ const AdminRegister = () => {
     lastName: '',
     role: 2 // Admin role
   });
-  const [error, setError] = useState<string>('');
+
+  const { mutate: registerMutate, isPending, isError, error, isSuccess, data } = useMutation({
+    mutationFn: register
+  });
+
+  // Handle success
+  useEffect(() => {
+    if (isSuccess && data && data.isSuccess && data.result) {
+      const userId = data.result;
+      navigate(`/verify-email?userId=${userId}`);
+    } else if (isSuccess) {
+      navigate('/admin/login');
+    }
+  }, [isSuccess, data, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
       return;
     }
 
-    try {
-      const userData = {
-        email: formData.email,
-        password: formData.password,
-        confirmPassword: formData.confirmPassword,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        role: formData.role
-      };
+    const userData = {
+      email: formData.email,
+      password: formData.password,
+      confirmPassword: formData.confirmPassword,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      role: formData.role
+    };
 
-      await register({ user: userData });
-      navigate('/login');
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('Có lỗi xảy ra khi đăng ký');
+    registerMutate({ user: userData });
+  };
+
+  // Parse error message
+  const getErrorMessage = () => {
+    if (!isError || !error) return '';
+
+    const errorMessage = error.message;
+    
+    if (errorMessage.includes('Error: ') && errorMessage.includes(' - ')) {
+      try {
+        const responsePart = errorMessage.split(' - ')[1];
+        const responseData: ResponseModel = JSON.parse(responsePart);
+        
+        if (responseData?.errorMessage) {
+          return responseData.errorMessage;
+        }
+      } catch (parseError) {
+        return 'Có lỗi xảy ra khi đăng ký';
       }
     }
+    
+    return errorMessage;
   };
 
   return (
@@ -59,20 +84,26 @@ const AdminRegister = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
+            {isError && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded relative" role="alert">
-                <span className="block sm:inline">{error}</span>
+                <span className="block sm:inline">{getErrorMessage()}</span>
+              </div>
+            )}
+
+            {formData.password !== formData.confirmPassword && formData.confirmPassword && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded relative" role="alert">
+                <span className="block sm:inline">Mật khẩu xác nhận không khớp</span>
               </div>
             )}
 
             <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
                 Tên
               </label>
               <div className="mt-1">
                 <input
-                  id="firstName"
-                  name="firstName"
+                  id="fullName"
+                  name="fullName"
                   type="text"
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -91,7 +122,6 @@ const AdminRegister = () => {
                   id="lastName"
                   name="lastName"
                   type="text"
-                  required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
@@ -108,6 +138,7 @@ const AdminRegister = () => {
                   id="email"
                   name="email"
                   type="email"
+                  autoComplete="email"
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   value={formData.email}
@@ -125,6 +156,7 @@ const AdminRegister = () => {
                   id="password"
                   name="password"
                   type="password"
+                  autoComplete="new-password"
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   value={formData.password}
@@ -142,6 +174,7 @@ const AdminRegister = () => {
                   id="confirmPassword"
                   name="confirmPassword"
                   type="password"
+                  autoComplete="new-password"
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   value={formData.confirmPassword}
@@ -153,9 +186,20 @@ const AdminRegister = () => {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={isPending || formData.password !== formData.confirmPassword}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Đăng ký
+                {isPending ? 'Đang đăng ký...' : 'Đăng ký'}
+              </button>
+            </div>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => navigate('/admin/login')}
+                className="text-sm text-blue-600 hover:text-blue-500"
+              >
+                Đã có tài khoản? Đăng nhập
               </button>
             </div>
           </form>

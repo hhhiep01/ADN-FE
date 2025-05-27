@@ -1,24 +1,40 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import type { UserRole } from '../types/auth';
+import { useAuth } from '../hooks/useAuth';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles: UserRole[];
+  allowedRoles: string[];
 }
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const location = useLocation();
-  // TODO: Replace with actual auth check
-  const user = {
-    role: 'admin' as UserRole
-  };
+  const { user, isAuthenticated, isLoading } = useAuth();
 
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Đang kiểm tra quyền truy cập...</p>
+        </div>
+      </div>
+    );
   }
 
-  if (!allowedRoles.includes(user.role)) {
-    return <Navigate to="/unauthorized" replace />;
+  if (!isAuthenticated || !user) {
+    // Redirect to appropriate login page based on the first allowed role
+    const loginPath = allowedRoles[0] === 'customer' ? '/customer/login' : '/admin/login';
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
+  }
+
+  const userRole = user.role.toLowerCase();
+  const hasPermission = allowedRoles.some(role => role.toLowerCase() === userRole);
+
+  if (!hasPermission) {
+    // Redirect to appropriate login page based on user's role
+    const loginPath = userRole === 'customer' ? '/customer/login' : '/admin/login';
+    return <Navigate to={loginPath} replace />;
   }
 
   return <>{children}</>;

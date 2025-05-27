@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { UserRole } from '../types/auth';
+import { useAuth } from '../hooks/useAuth';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -8,15 +8,28 @@ interface AdminLayoutProps {
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const navigate = useNavigate();
-  const userRole = localStorage.getItem('userRole') as UserRole | null;
+  const { user, isAuthenticated, logout, isAdmin, isStaff, isLoading } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem('userRole');
-    navigate('/login');
+    logout();
+    navigate('/admin/login');
   };
 
-  if (!userRole || (userRole !== 'admin' && userRole !== 'staff')) {
-    navigate('/login');
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Đang kiểm tra quyền truy cập...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated or not admin/staff
+  if (!isAuthenticated || !user || (!isAdmin && !isStaff)) {
+    navigate('/admin/login');
     return null;
   }
 
@@ -32,7 +45,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-4 space-y-2">
-            {userRole === 'admin' && (
+            {isAdmin ? (
               <Link
                 to="/admin/users"
                 className="flex items-center px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-600"
@@ -42,20 +55,26 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 </svg>
                 Quản lý người dùng
               </Link>
+            ) : (
+              <Link
+                to="/staff/appointments"
+                className="flex items-center px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-600"
+              >
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2z" />
+                </svg>
+                Quản lý đơn hẹn
+              </Link>
             )}
-            <Link
-              to="/staff/appointments"
-              className="flex items-center px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-600"
-            >
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              Quản lý đơn hẹn
-            </Link>
           </nav>
 
-          {/* Logout Button */}
+          {/* User Info */}
           <div className="p-4 border-t">
+            <div className="text-sm text-gray-600 mb-2">
+              <div className="font-medium">{user.fullName}</div>
+              <div className="text-xs">{user.email}</div>
+              <div className="text-xs text-blue-600">{user.role}</div>
+            </div>
             <button
               onClick={handleLogout}
               className="flex items-center w-full px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-600"
@@ -75,7 +94,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <header className="bg-white shadow-sm">
           <div className="px-4 py-4">
             <h1 className="text-2xl font-semibold text-gray-900">
-              {userRole === 'admin' ? 'Quản trị hệ thống' : 'Quản lý đơn hẹn'}
+              {isAdmin ? 'Quản trị hệ thống' : 'Quản lý đơn hẹn'}
             </h1>
           </div>
         </header>

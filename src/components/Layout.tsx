@@ -1,18 +1,17 @@
-import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { UserRole } from '../types/auth';
+import { useAuth } from '../hooks/useAuth';
 
 interface LayoutProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 const Layout = ({ children }: LayoutProps) => {
   const navigate = useNavigate();
-  const userRole = localStorage.getItem('userRole') as UserRole | null;
+  const { user, isAuthenticated, logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem('userRole');
-    navigate('/login');
+    logout();
+    navigate('/customer/login');
   };
 
   return (
@@ -36,8 +35,8 @@ const Layout = ({ children }: LayoutProps) => {
                 Đặt lịch
               </Link>
 
-              {/* Customer & Guest Navigation */}
-              {(userRole === 'customer' || userRole === 'guest') && (
+              {/* Customer Navigation */}
+              {isAuthenticated && user?.role.toLowerCase() === 'customer' && (
                 <>
                   <Link to="/results" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500">
                     Kết quả xét nghiệm
@@ -49,27 +48,22 @@ const Layout = ({ children }: LayoutProps) => {
               )}
 
               {/* Admin Navigation */}
-              {userRole === 'admin' && (
-                <>
-                  <Link to="/admin/users" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500">
-                    Quản lý người dùng
-                  </Link>
-                  <Link to="/staff/appointments" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500">
-                    Quản lý đơn hẹn
-                  </Link>
-                </>
+              {isAuthenticated && user?.role.toLowerCase() === 'admin' && (
+                <Link to="/admin/users" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500">
+                  Quản lý người dùng
+                </Link>
               )}
 
               {/* Staff Navigation */}
-              {userRole === 'staff' && (
+              {isAuthenticated && user?.role.toLowerCase() === 'staff' && (
                 <Link to="/staff/appointments" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500">
                   Quản lý đơn hẹn
                 </Link>
               )}
             </div>
             
-            <div className="flex items-center space-x-4">
-              {userRole ? (
+            <div className="flex items-center">
+              {isAuthenticated ? (
                 <button
                   onClick={handleLogout}
                   className="text-gray-900 hover:text-blue-600"
@@ -78,7 +72,7 @@ const Layout = ({ children }: LayoutProps) => {
                 </button>
               ) : (
                 <Link
-                  to="/login"
+                  to="/customer/login"
                   className="text-gray-900 hover:text-blue-600"
                 >
                   Đăng nhập

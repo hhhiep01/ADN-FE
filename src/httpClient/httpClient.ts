@@ -1,15 +1,5 @@
 import axios from "axios";
 
-// Tạo instance axios với cấu hình mặc định
-const axiosInstance = axios.create({
-  baseURL: 'https://localhost:7046/api',
-  headers: {
-    'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'true'
-  },
-  withCredentials: true // Cho phép gửi cookies trong cross-origin requests
-});
-
 interface Body {
   method: "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH";
   contentType?: string;
@@ -41,12 +31,14 @@ const request = (arg: Body) => {
     });
   }
 
-  return axiosInstance
+  return axios
     .request({
       method,
       headers: {
         "content-type": contentType,
         Authorization: authorization,
+        "ngrok-skip-browser-warning": true,
+         Origin: window.location.origin,
       },
       url: url,
       data,
@@ -56,13 +48,12 @@ const request = (arg: Body) => {
     })
     .catch((e) => {
       if (e.response) {
-        console.error("Axios request failed with response:", e.response);
-        throw new Error(`Error: ${e.response.status} - ${e.response.data}`);
+        const error = new Error(`Error: ${e.response.data.errorMessage || 'Request failed'}`);
+        (error as any).response = e.response;
+        throw error;
       } else if (e.request) {
-        console.error("Axios request failed with request:", e.request);
         throw new Error("No response received from server");
       } else {
-        console.error("Axios request failed with error message:", e.message);
         throw new Error(e.message);
       }
     });
