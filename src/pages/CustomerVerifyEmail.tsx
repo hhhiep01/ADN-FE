@@ -26,19 +26,18 @@ const CustomerVerifyEmail = () => {
   // Handle success
   useEffect(() => {
     if (isSuccess && data && data.isSuccess) {
-      navigate('/customer/login', {
-        state: {
-          message: 'Xác thực email thành công! Bạn có thể đăng nhập ngay bây giờ.',
-          type: 'success'
-        }
-      });
+      navigate('/customer/login');
     }
   }, [isSuccess, data, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!userId || !verificationCode.trim()) {
+    if (!userId) {
+      return;
+    }
+
+    if (!verificationCode.trim()) {
       return;
     }
 
@@ -62,8 +61,13 @@ const CustomerVerifyEmail = () => {
         if (responseData?.errorMessage) {
           return responseData.errorMessage;
         }
+        
+        if (!responseData?.isSuccess && responseData?.result) {
+          return responseData.result;
+        }
+        
       } catch (parseError) {
-        return 'Mã xác thực không hợp lệ hoặc đã hết hạn';
+        return 'Có lỗi xảy ra khi xác thực';
       }
     }
     
@@ -100,6 +104,12 @@ const CustomerVerifyEmail = () => {
               </div>
             )}
 
+            {isSuccess && data && data.isSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded relative" role="alert">
+                <span className="block sm:inline">Xác thực email thành công! Bạn có thể đăng nhập ngay bây giờ.</span>
+              </div>
+            )}
+
             <div>
               <label htmlFor="verificationCode" className="block text-sm font-medium text-gray-700">
                 Mã xác thực *
@@ -132,13 +142,26 @@ const CustomerVerifyEmail = () => {
               </button>
             </div>
 
-            <div className="text-center">
-              <Link
-                to="/customer/login"
-                className="text-sm text-gray-600 hover:text-gray-900"
+            <div className="text-center space-y-3">
+              <button
+                type="button"
+                className="text-sm text-blue-600 hover:text-blue-500 underline"
+                onClick={() => {
+                  // TODO: Implement resend verification code
+                  console.log('Resend verification code for userId:', userId);
+                }}
               >
-                Quay lại đăng nhập
-              </Link>
+                Gửi lại mã xác thực
+              </button>
+              
+              <div>
+                <Link
+                  to="/customer/login"
+                  className="text-sm text-gray-600 hover:text-gray-900"
+                >
+                  Quay lại đăng nhập
+                </Link>
+              </div>
             </div>
           </form>
         </div>
