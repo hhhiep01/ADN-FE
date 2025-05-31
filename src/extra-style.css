@@ -1,0 +1,14 @@
+/* extra-style.css - Style for 'Đọc thêm' button in related articles */
+
+.readmore-btn {
+  color: #1976d2;
+  font-weight: 600;
+  display: inline-block;
+  margin-top: 8px;
+  transition: color 0.2s;
+  text-decoration: none;
+}
+.readmore-btn:hover {
+  color: #0d47a1;
+  text-decoration: underline;
+}
