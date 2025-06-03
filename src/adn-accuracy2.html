@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bài viết liên quan - ADN Testing</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Segoe+UI:400,700&display=swap">
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f5f6fa;
+      margin: 0;
+    }
+    .main-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px 8px;
+    }
+    h2 {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #1a202c;
+      margin-bottom: 2rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+    @media (min-width: 768px) {
+      .grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    .card {
+      background: #fff;
+      border-radius: 1rem;
+      box-shadow: 0 2px 16px #0001;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      transition: box-shadow 0.2s;
+    }
+    .card:hover {
+      box-shadow: 0 6px 24px #0002;
+    }
+    .card-img {
+      width: 100%;
+      height: 224px;
+      object-fit: cover;
+      border-radius: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .card-title {
+      font-weight: bold;
+      font-size: 1.125rem;
+      color: #1a202c;
+      margin-bottom: 0.5rem;
+      line-height: 1.3;
+    }
+    .card-date {
+      color: #6b7280;
+      font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+    }
+    .card-desc {
+      color: #374151;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 3.5em;
+    }
+    .card-link {
+      color: #1976d2;
+      font-weight: 500;
+      text-decoration: none;
+      transition: color 0.2s;
+      margin-top: auto;
+      display: inline-block;
+    }
+    .card-link:hover {
+      color: #0d47a1;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <h2>Bài viết liên quan</h2>
+    <div class="grid">
+      <!-- Card 1 -->
+      <div class="card">
+        <img src="/swp1.jpg" alt="ADN thai nhi" class="card-img" />
+        <div class="card-title">Xét nghiệm ADN thai nhi? Các loại xét nghiệm ADN thai nhi</div>
+        <div class="card-date">Xuất bản 23/10/2023 | Cập nhật lần cuối 23/10/2023</div>
+        <div class="card-desc">Tìm hiểu về xét nghiệm ADN thai nhi, lợi ích và các lưu ý khi thực hiện.</div>
+        <a href="#" class="card-link">Đọc thêm →</a>
+      </div>
+      <!-- Card 2 -->
+      <div class="card">
+        <img src="/swp2.jpg" alt="ADN cha con" class="card-img" />
+        <div class="card-title">Xét nghiệm ADN cha con là gì? Quy trình thế nào?</div>
+        <div class="card-date">Xuất bản 23/10/2023 | Cập nhật lần cuối 23/10/2023</div>
+        <div class="card-desc">Giải đáp thắc mắc về xét nghiệm ADN cha con, bao gồm quy trình và chi phí.</div>
+        <a href="#" class="card-link">Đọc thêm →</a>
+      </div>
+      <!-- Card 3 -->
+      <div class="card">
+        <img src="/swp3.png" alt="Quy trình xét nghiệm" class="card-img" />
+        <div class="card-title">Tìm hiểu chi tiết quy trình xét nghiệm ADN</div>
+        <div class="card-date">Xuất bản 23/10/2023 | Cập nhật lần cuối 23/10/2023</div>
+        <div class="card-desc">Các bước trong quy trình xét nghiệm ADN và thời gian nhận kết quả.</div>
+        <a href="#" class="card-link">Đọc thêm →</a>
+      </div>
+      <!-- Card 4 -->
+      <div class="card">
+        <img src="/docadn.png" alt="Kết quả xét nghiệm" class="card-img" />
+        <div class="card-title">Hướng dẫn cách đọc kết quả xét nghiệm ADN</div>
+        <div class="card-date">Xuất bản 23/10/2023 | Cập nhật lần cuối 23/10/2023</div>
+        <div class="card-desc">Cách đọc và hiểu các thông số trong kết quả xét nghiệm ADN.</div>
+        <a href="#" class="card-link">Đọc thêm →</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
