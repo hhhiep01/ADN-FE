@@ -1,20 +1,26 @@
-
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaDna, FaFileAlt, FaHome, FaUser, FaPhone, FaEnvelope } from 'react-icons/fa';
+import { FaDna, FaFileAlt, FaHome, FaUser, FaPhone, FaEnvelope, FaCalendarCheck, FaFlask, FaUserCircle, FaVial, FaClipboardCheck, FaClipboardList, FaAward, FaMapMarkerAlt, FaUserCog } from 'react-icons/fa';
 import { FaCheckCircle, FaClock, FaLock, FaHeadset } from 'react-icons/fa';
-
-
-
 
 const Home = () => {
   const userRole = localStorage.getItem('userRole');
   const isLoggedIn = !!userRole;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeFaq, setActiveFaq] = useState<number | null>(null); // Khai báo kiểu cụ thể để tránh lỗi
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  
+  const initialCountdown = 14 * 60 * 60 + 2 * 60 + 34; // 14 giờ 2 phút 34 giây
+  const [countdown, setCountdown] = useState(initialCountdown);
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => setCountdown((c) => c - 1), 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
+  const hours = String(Math.floor(countdown / 3600)).padStart(2, '0');
+  const minutes = String(Math.floor((countdown % 3600) / 60)).padStart(2, '0');
+  const seconds = String(countdown % 60).padStart(2, '0');
 
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
@@ -74,19 +80,24 @@ const Home = () => {
     { name: 'Mr.Nghiêm Xuân Đức ', text: 'Tôi rất hài lòng với sự bảo mật và độ tin cậy của trung tâm.', avatar: '/src/IMG/Mr.NXD.png' },
   ];
 
-  
-const faqs = [
-  { question: 'Xét nghiệm ADN mất bao lâu?', answer: 'Thông thường từ 3-5 ngày làm việc.' },
-  { question: 'Kết quả có được công nhận pháp lý không?', answer: 'Có, xét nghiệm ADN hành chính của chúng tôi được các cơ quan nhà nước công nhận.' },
-  { question: 'Tôi cần chuẩn bị gì trước khi xét nghiệm?', answer: 'Chỉ cần cung cấp mẫu tóc, móng tay hoặc máu. Chúng tôi sẽ hướng dẫn chi tiết.' },
-  { question: 'Chi phí xét nghiệm ADN là bao nhiêu?', answer: 'Chi phí phụ thuộc vào loại xét nghiệm (dân sự hoặc hành chính). Vui lòng liên hệ để được báo giá chi tiết.' },
-  { question: 'Xét nghiệm ADN có an toàn và bảo mật không?', answer: 'Hoàn toàn an toàn và bảo mật. Chúng tôi tuân thủ các quy định nghiêm ngặt về bảo vệ dữ liệu cá nhân.' },
-  { question: 'Có thể xét nghiệm ADN cho trẻ sơ sinh không?', answer: 'Có, chúng tôi hỗ trợ xét nghiệm cho trẻ sơ sinh với quy trình nhẹ nhàng và an toàn.' },
-  { question: 'Thời gian thu mẫu tại nhà là bao lâu?', answer: 'Nhân viên sẽ thu mẫu trong vòng 1-2 giờ sau khi bạn đặt lịch, tùy khu vực.' },
-  { question: 'Kết quả xét nghiệm có được gửi qua email không?', answer: 'Có, bạn có thể chọn nhận kết quả qua email hoặc trực tiếp tại trung tâm.' },
-];
+  const faqs = [
+    { question: 'Xét nghiệm ADN mất bao lâu?', answer: 'Thông thường từ 3-5 ngày làm việc.' },
+    { question: 'Kết quả có được công nhận pháp lý không?', answer: 'Có, xét nghiệm ADN hành chính của chúng tôi được các cơ quan nhà nước công nhận.' },
+    { question: 'Tôi cần chuẩn bị gì trước khi xét nghiệm?', answer: 'Chỉ cần cung cấp mẫu tóc, móng tay hoặc máu. Chúng tôi sẽ hướng dẫn chi tiết.' },
+    { question: 'Chi phí xét nghiệm ADN là bao nhiêu?', answer: 'Chi phí phụ thuộc vào loại xét nghiệm (dân sự hoặc hành chính). Vui lòng liên hệ để được báo giá chi tiết.' },
+    { question: 'Xét nghiệm ADN có an toàn và bảo mật không?', answer: 'Hoàn toàn an toàn và bảo mật. Chúng tôi tuân thủ các quy định nghiêm ngặt về bảo vệ dữ liệu cá nhân.' },
+    { question: 'Có thể xét nghiệm ADN cho trẻ sơ sinh không?', answer: 'Có, chúng tôi hỗ trợ xét nghiệm cho trẻ sơ sinh với quy trình nhẹ nhàng và an toàn.' },
+    { question: 'Thời gian thu mẫu tại nhà là bao lâu?', answer: 'Nhân viên sẽ thu mẫu trong vòng 1-2 giờ sau khi bạn đặt lịch, tùy khu vực.' },
+    { question: 'Kết quả xét nghiệm có được gửi qua email không?', answer: 'Có, bạn có thể chọn nhận kết quả qua email hoặc trực tiếp tại trung tâm.' },
+  ];
 
-
+  const [deviceIndex, setDeviceIndex] = useState(0);
+  const deviceImages = [1,2,3,4,5,6].map(i => `/src/IMG/tb${i}.png`);
+  const showPerPage = 3;
+  const canPrev = deviceIndex > 0;
+  const canNext = deviceIndex + showPerPage < deviceImages.length;
+  const handleDevicePrev = () => setDeviceIndex(i => Math.max(0, i - 1));
+  const handleDeviceNext = () => setDeviceIndex(i => Math.min(deviceImages.length - showPerPage, i + 1));
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white text-gray-800 py-12 px-4 sm:px-6 lg:px-8 font-sans">
@@ -371,69 +382,202 @@ const faqs = [
 
 
 
-{/* Contact Form */}
-<motion.section
-  variants={fadeIn}
-  initial="hidden"
-  animate="visible"
-  className="bg-gradient-to-br from-white to-blue-100 p-10 rounded-2xl shadow-xl"
->
-  <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-8 text-center">Liên hệ tư vấn</h2>
-  <motion.form
-    onSubmit={handleSubmit}
-    className="max-w-lg mx-auto space-y-6"
+{/* Đăng ký xét nghiệm ADN & Đăng ký tư vấn */}
+<div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+  {/* Bên trái: Khuyến mãi + countdown + nút gọi */}
+  <div className="bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center">
+    <h2 className="text-2xl font-bold text-blue-700 mb-2 text-center">Đăng Ký Xét Nghiệm ADN</h2>
+    <p className="text-gray-700 text-center mb-2">
+      Nhận ngay khuyến mãi trong <span className="font-semibold text-pink-600">tháng 5</span> chỉ còn <span className="font-bold text-blue-700">1,500,000 đ/mẫu</span> <span className="text-sm text-gray-400 line-through">(Giá cũ 2,000,000đ/mẫu)</span> chỉ áp dụng trong tháng 5/2025
+    </p>
+    <p className="text-pink-600 font-semibold mb-2">Tiết kiệm <span className="font-bold">500,000đ</span> chi phí làm xét nghiệm ADN.</p>
+    <p className="text-gray-600 mb-2">Dành cho 15 khách hàng đăng ký làm xét nghiệm sớm nhất trong tháng 5 này.</p>
+    <div className="mb-4 text-center">
+      <span className="text-gray-700">Thời gian khuyến mại còn lại</span>
+      <div className="flex justify-center gap-2 mt-2">
+        <div className="bg-pink-600 text-white rounded-lg px-4 py-2 text-2xl font-bold">{hours}</div>
+        <span className="text-xl font-bold">:</span>
+        <div className="bg-pink-600 text-white rounded-lg px-4 py-2 text-2xl font-bold">{minutes}</div>
+        <span className="text-xl font-bold">:</span>
+        <div className="bg-pink-600 text-white rounded-lg px-4 py-2 text-2xl font-bold">{seconds}</div>
+      </div>
+    </div>
+    <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl mt-2 transition-colors">
+      <span role="img" aria-label="phone" className="mr-2">📞</span> Click Gọi ngay để nhận ưu đãi
+    </button>
+  </div>
+  {/* Bên phải: Form đăng ký tư vấn */}
+  <form
+    className="bg-white rounded-2xl shadow-lg p-8 space-y-4"
+    onSubmit={e => {
+      e.preventDefault();
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+      (e.target as HTMLFormElement).reset();
+    }}
   >
-    <div className="flex flex-col space-y-2">
-      <label htmlFor="name" className="text-gray-700">Họ và tên</label>
-      <input
-        type="text"
-        id="name"
-        name="name"
-        required
-        className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-      />
+    <h2 className="text-2xl font-bold text-blue-700 mb-2 text-center">Đăng Ký Tư Vấn</h2>
+    <p className="text-gray-700 text-center mb-4 text-sm">Quý khách vui lòng để lại thông tin và lời nhắn, bộ phận CSKH sẽ liên hệ lại ngay sau khi nhận được thông tin của quý khách. Trân trọng cảm ơn quý khách!!</p>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="text" placeholder="Họ và tên" className="border rounded-lg px-3 py-2" required />
+      <input type="tel" placeholder="Số điện thoại" className="border rounded-lg px-3 py-2" required />
     </div>
-    <div className="flex flex-col space-y-2">
-      <label htmlFor="phone" className="text-gray-700">Số điện Thoại</label>
-      <input
-        type="phone"
-        id="phone"
-        name="phone"
-        required
-        className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-      />
+    <div className="flex flex-wrap gap-4 mb-2">
+      <label className="flex items-center gap-2">
+        <input type="radio" name="method" className="accent-blue-600" defaultChecked /> Tại trung tâm
+      </label>
+      <label className="flex items-center gap-2">
+        <input type="radio" name="method" className="accent-blue-600" /> Thu mẫu tại nhà
+      </label>
+      <label className="flex items-center gap-2">
+        <input type="radio" name="method" className="accent-blue-600" /> Tự thu và gửi mẫu
+      </label>
     </div>
-    <div className="flex flex-col space-y-2">
-      <label htmlFor="message" className="text-gray-700">Nội dung</label>
-      <textarea
-        id="message"
-        name="message"
-        required
-        rows={4}
-        className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-      ></textarea>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <select className="border rounded-lg px-3 py-2" required>
+        <option>Mục đích xét nghiệm</option>
+        <option>Dân sự</option>
+        <option>Pháp lý</option>
+        <option>Thai nhi</option>
+      </select>
     </div>
-    <motion.button
-      type="submit"
-      disabled={isSubmitting}
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold disabled:opacity-50"
-    >
-      {isSubmitting ? (
-        <>
-          <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-          </svg>
-          Đang gửi...
-        </>
-      ) : (
-        'Gửi yêu cầu tư vấn'
-      )}
-    </motion.button>
-  </motion.form>
-</motion.section>
+    <select className="border rounded-lg px-3 py-2 w-full" required>
+      <option>Chọn loại xét nghiệm</option>
+      <option>Mẫu Hành chính</option>
+      <option>Mẫu Dân sự</option>
+      <option>Mẫu Thai Nhi KXL</option>
+    </select>
+    <textarea placeholder="Nội dung ghi chú (nếu có)" className="border rounded-lg px-3 py-2 w-full" rows={3}></textarea>
+    <div className="bg-pink-100 rounded-lg p-3 text-sm text-pink-700 mb-2">
+      <div className="font-semibold mb-1">Xem mẫu đơn yêu cầu xét nghiệm ADN</div>
+      <ul className="list-disc pl-5">
+        <li>Mẫu Hành chính</li>
+        <li>Mẫu Dân Sự</li>
+        <li>Mẫu Thai Nhi KXL</li>
+      </ul>
+    </div>
+    <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-lg transition-colors">
+      GỬI YÊU CẦU <span className="ml-1">→</span>
+    </button>
+    {showSuccess && (
+      <div className="mt-2 text-green-600 text-center font-semibold">Gửi yêu cầu thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất.</div>
+    )}
+    <div className="text-xs text-gray-500 mt-2 text-center">*Mọi thông tin đầu vào đều được chúng tôi mã hóa để đảm bảo tính bảo mật tốt nhất cho mọi người.</div>
+  </form>
+</div>
+
+
+{/* Section Quy trình xét nghiệm */}
+<div className="bg-blue-50 py-16">
+  <div className="max-w-5xl mx-auto px-4">
+    <div className="text-center mb-6">
+      <div className="text-pink-600 font-bold uppercase tracking-widest text-sm">QUY TRÌNH</div>
+      <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Thực Hiện Xét Nghiệm ADN</h2>
+      <p className="text-gray-700 max-w-3xl mx-auto text-base md:text-lg">
+        Chúng tôi luôn đảm bảo tính chính xác và đáng tin cậy của kết quả xét nghiệm ADN bằng cách sử dụng các phương pháp và tiêu chuẩn chất lượng cao nhất.<br />
+        Chúng tôi đảm bảo tính bảo mật, riêng tư của thông tin cá nhân và cam kết không chia sẻ thông tin này với bất kỳ bên thứ ba nào.
+      </p>
+    </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 text-center mt-10">
+      <div>
+        <div className="mx-auto mb-4 w-24 h-24 flex items-center justify-center rounded-full bg-blue-700 shadow-lg">
+          <FaUserCircle className="text-white text-5xl" />
+        </div>
+        <div className="font-bold text-lg mb-1">Tư vấn</div>
+      </div>
+      <div>
+        <div className="mx-auto mb-4 w-24 h-24 flex items-center justify-center rounded-full bg-blue-700 shadow-lg">
+          <FaVial className="text-white text-5xl" />
+        </div>
+        <div className="font-bold text-lg mb-1">Thu mẫu</div>
+      </div>
+      <div>
+        <div className="mx-auto mb-4 w-24 h-24 flex items-center justify-center rounded-full bg-blue-700 shadow-lg">
+          <FaFlask className="text-white text-5xl" />
+        </div>
+        <div className="font-bold text-lg mb-1">Phân tích</div>
+      </div>
+      <div>
+        <div className="mx-auto mb-4 w-24 h-24 flex items-center justify-center rounded-full bg-blue-700 shadow-lg">
+          <FaClipboardCheck className="text-white text-5xl" />
+        </div>
+        <div className="font-bold text-lg mb-1">Trả kết quả</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{/* Section Cơ sở vật chất – Trang thiết bị */}
+<div className="bg-blue-50 py-16">
+  <div className="max-w-6xl mx-auto px-4">
+    <div className="text-center mb-8">
+      <div className="text-pink-600 font-bold uppercase tracking-widest text-sm mb-1">CƠ SỞ VẬT CHẤT</div>
+      <h2 className="text-3xl md:text-4xl font-bold text-blue-700 mb-6">TRANG THIẾT BỊ</h2>
+    </div>
+    <div className="mb-10 relative flex items-center justify-center">
+      <button
+        type="button"
+        aria-label="Trước"
+        onClick={handleDevicePrev}
+        disabled={!canPrev}
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-blue-300 shadow rounded-full w-10 h-10 flex items-center justify-center hover:bg-blue-100 transition disabled:opacity-30"
+        style={{transform: 'translateY(-50%)'}}
+      >
+        <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
+      <div className="flex gap-6 w-full max-w-4xl mx-auto overflow-hidden">
+        {deviceImages.slice(deviceIndex, deviceIndex + showPerPage).map((src, i) => (
+          <img
+            key={i + deviceIndex}
+            src={src}
+            alt={`Thiết bị ${i + 1 + deviceIndex}`}
+            className="rounded-xl object-cover w-72 h-56 flex-shrink-0 shadow-lg transition-transform duration-300 hover:scale-105 mx-auto"
+          />
+        ))}
+      </div>
+      <button
+        type="button"
+        aria-label="Sau"
+        onClick={handleDeviceNext}
+        disabled={!canNext}
+        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-blue-300 shadow rounded-full w-10 h-10 flex items-center justify-center hover:bg-blue-100 transition disabled:opacity-30"
+        style={{transform: 'translateY(-50%)'}}
+      >
+        <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
+    </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 text-center mt-8">
+      <div>
+        <div className="mx-auto mb-3 w-16 h-16 flex items-center justify-center rounded-full bg-white border-2 border-blue-400 shadow">
+          <FaClipboardList className="text-blue-600 text-3xl" />
+        </div>
+        <div className="font-bold text-base text-blue-700 mb-1 uppercase">Đặt lịch dễ dàng</div>
+        <div className="text-gray-700 text-sm">Đặt lịch hẹn xét nghiệm dễ dàng chỉ với chiếc điện thoại trên tay, chúng tôi có hỗ trợ thu mẫu tại nhà hoặc nơi bạn tự chỉ định.</div>
+      </div>
+      <div>
+        <div className="mx-auto mb-3 w-16 h-16 flex items-center justify-center rounded-full bg-white border-2 border-blue-400 shadow">
+          <FaAward className="text-blue-600 text-3xl" />
+        </div>
+        <div className="font-bold text-base text-blue-700 mb-1 uppercase">Chuẩn ISO</div>
+        <div className="text-gray-700 text-sm">Luôn đi đầu trong việc đầu tư hệ thống trang thiết bị hiện đại bậc nhất thế giới như: <i>NGS, GeneMapper IDX, Array,...</i></div>
+      </div>
+      <div>
+        <div className="mx-auto mb-3 w-16 h-16 flex items-center justify-center rounded-full bg-white border-2 border-blue-400 shadow">
+          <FaMapMarkerAlt className="text-blue-600 text-3xl" />
+        </div>
+        <div className="font-bold text-base text-blue-700 mb-1 uppercase">Vị trí</div>
+        <div className="text-gray-700 text-sm">Tọa lạc tại trung tâm các thành phố lớn như <b>Hà Nội, Sài Gòn, Nha Trang, Vũng Tàu,...</b> giúp khách hàng dễ dàng tiếp cận.</div>
+      </div>
+      <div>
+        <div className="mx-auto mb-3 w-16 h-16 flex items-center justify-center rounded-full bg-white border-2 border-blue-400 shadow">
+          <FaUserCog className="text-blue-600 text-3xl" />
+        </div>
+        <div className="font-bold text-base text-blue-700 mb-1 uppercase">Chủ động</div>
+        <div className="text-gray-700 text-sm">Văn phòng chi nhánh và đội ngũ nhân sự chất lượng, đông đảo, có trình độ chuyên môn cao tại 63 tỉnh thành khắp cả nước.</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 
       
