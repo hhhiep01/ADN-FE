@@ -21,6 +21,8 @@ import VerifyEmail from './pages/VerifyEmail';
 import CustomerVerifyEmail from './pages/CustomerVerifyEmail';
 import StaffVerifyEmail from './pages/StaffVerifyEmail';
 
+import BlogDetail from './pages/BlogDetail';
+
 const queryClient = new QueryClient();
 
 function App() {
@@ -41,6 +43,8 @@ function App() {
           <Route path="/" element={<Layout><Home /></Layout>} />
           <Route path="/services" element={<Layout><Services /></Layout>} />
           <Route path="/blog" element={<Layout><Blog /></Layout>} />
+          
+          <Route path="/blog-detail" element={<Layout><BlogDetail /></Layout>} />
           
           {/* Customer Routes */}
           <Route 

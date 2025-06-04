@@ -6,7 +6,6 @@ export const queryClient = new QueryClient();
 
 export const apiLinks = {
   Auth: {
-    Loginwithgoogle: `${baseUrl}/Auth/signin-google`,
     login: `${baseUrl}/Auth/login`,
     register: `${baseUrl}/Auth/register`,
     confirmEmail: `${baseUrl}/Auth/confirmation`,

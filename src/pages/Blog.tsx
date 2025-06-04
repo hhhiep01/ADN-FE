@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Blog = () => {
   const posts = [
@@ -8,7 +9,7 @@ const Blog = () => {
       excerpt: 'Tìm hiểu về xét nghiệm ADN, các trường hợp cần thực hiện và quy trình thực hiện xét nghiệm.',
       date: '20/02/2024',
       category: 'Kiến thức',
-      image: 'https://images.unsplash.com/photo-1581093458791-9d15482442f6?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
+      image: '\swp1.jpg'
     },
     {
       id: 2,
@@ -16,7 +17,7 @@ const Blog = () => {
       excerpt: 'Phân tích về độ chính xác của các phương pháp xét nghiệm ADN huyết thống hiện nay.',
       date: '18/02/2024',
       category: 'Khoa học',
-      image: 'https://images.unsplash.com/photo-1581093458791-9d15482442f6?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
+      image: '\swp2.jpg'
     },
     {
       id: 3,
@@ -24,7 +25,7 @@ const Blog = () => {
       excerpt: 'Hướng dẫn chi tiết về quy trình thu mẫu ADN tại nhà và những lưu ý quan trọng.',
       date: '15/02/2024',
       category: 'Hướng dẫn',
-      image: 'https://images.unsplash.com/photo-1581093458791-9d15482442f6?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
+      image: '\swp3.png'
     }
   ];
 
@@ -57,9 +58,19 @@ const Blog = () => {
               <p className="text-gray-600 mb-4">
                 {post.excerpt}
               </p>
-              <button className="text-blue-600 hover:text-blue-700 font-medium">
-                Đọc thêm →
-              </button>
+              {post.id === 1 ? (
+                <Link to="/blog-detail" className="readmore-btn">
+                  Đọc thêm →
+                </Link>
+              ) : post.id === 2 ? (
+                <Link to="/example2" className="readmore-btn">
+                  Đọc thêm →
+                </Link>
+              ) : post.id === 3 ? (
+                <Link to="/example3" className="readmore-btn">
+                  Đọc thêm →
+                </Link>
+              ) : null}
             </div>
           </article>
         ))}
@@ -82,4 +93,4 @@ const Blog = () => {
   );
 };
 
-export default Blog; 
+export default Blog;
