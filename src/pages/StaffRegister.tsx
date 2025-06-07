@@ -12,7 +12,7 @@ const StaffRegister = () => {
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    role: 1 // Staff role
+    roleId: 3 // Staff role ID
   });
   
   const { mutate: registerMutate, isPending, isError, error, isSuccess, data } = useMutation({
@@ -37,7 +37,7 @@ const StaffRegister = () => {
       confirmPassword: formData.confirmPassword,
       firstName: formData.firstName,
       lastName: formData.lastName,
-      role: formData.role
+      roleId: formData.roleId
       };
 
       registerMutate({ user: userData });
