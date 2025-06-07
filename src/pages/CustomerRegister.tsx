@@ -12,7 +12,7 @@ const CustomerRegister = () => {
     confirmPassword: '',
     firstName: '',
     lastName: '',
-     role: 0 // Admin customer
+     roleId: 2 // Admin customer
   });
   
   const { mutate: registerMutate, isPending, isError, error, isSuccess, data } = useMutation({
@@ -40,7 +40,7 @@ const CustomerRegister = () => {
       confirmPassword: formData.confirmPassword,
       firstName: formData.firstName,
       lastName: formData.lastName,
-      role: formData.role
+      roleId: formData.roleId
       };
 
       registerMutate({ user: userData });
