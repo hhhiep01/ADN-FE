@@ -15,7 +15,9 @@ const request = (arg: Body) => {
   const token = localStorage.getItem("token");
   const {
     method,
-    contentType = arg.data instanceof FormData ? "multipart/form-data" : "application/json",
+    contentType = arg.data instanceof FormData
+      ? "multipart/form-data"
+      : "application/json",
     url,
     data,
     params,
@@ -38,7 +40,6 @@ const request = (arg: Body) => {
         "content-type": contentType,
         Authorization: authorization,
         "ngrok-skip-browser-warning": true,
-         Origin: window.location.origin,
       },
       url: url,
       data,
@@ -47,8 +48,19 @@ const request = (arg: Body) => {
       cancelToken: source.token,
     })
     .catch((e) => {
+      if (axios.isCancel(e)) {
+        throw new DOMException("Aborted", "AbortError");
+      }
       if (e.response) {
-        const error = new Error(`Error: ${e.response.data.errorMessage || 'Request failed'}`);
+        let errorMessage = e.response.data.errorMessage;
+        if (
+          !errorMessage &&
+          typeof e.response.data === "object" &&
+          e.response.data !== null
+        ) {
+          errorMessage = JSON.stringify(e.response.data);
+        }
+        const error = new Error(`Error: ${errorMessage || "Request failed"}`);
         (error as any).response = e.response;
         throw error;
       } else if (e.request) {
@@ -60,10 +72,15 @@ const request = (arg: Body) => {
 };
 
 const httpClient = {
-  request,
+  request: (arg: Body) => {
+    console.log("Outgoing Request:", arg);
+    return request(arg);
+  },
   get: (arg: Omit<Body, "method">) => request({ ...arg, method: "GET" }),
   post: (arg: Omit<Body, "method">, isMultipart = false) => {
-    const contentType = isMultipart ? "multipart/form-data" : "application/json";
+    const contentType = isMultipart
+      ? "multipart/form-data"
+      : "application/json";
     return request({ ...arg, method: "POST", contentType });
   },
   put: (arg: Omit<Body, "method">) => request({ ...arg, method: "PUT" }),

@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-const baseUrl = "https://localhost:7046/api";
+const baseUrl = "https://5d09-115-73-105-67.ngrok-free.app/api";
 
 export const queryClient = new QueryClient();
 
@@ -10,5 +10,33 @@ export const apiLinks = {
     register: `${baseUrl}/Auth/register`,
     confirmEmail: `${baseUrl}/Auth/confirmation`,
     verification: `${baseUrl}/Auth/verification`,
+  },
+  TestOrder: {
+    getAll: `${baseUrl}/TestOrder`,
+    create: `${baseUrl}/TestOrder`,
+    update: `${baseUrl}/TestOrder`,
+    getById: (id: string) => `${baseUrl}/TestOrder/${id}`,
+    delete: (id: string) => `${baseUrl}/TestOrder/${id}`,
+    updateStatus: `${baseUrl}/TestOrder/status`,
+    updateDeliveryKitStatus: `${baseUrl}/TestOrder/delivery-kit-status`,
+    updateAppointmentStatus: `${baseUrl}/TestOrder/appointment-status`,
+  },
+  Sample: {
+    getAll: `${baseUrl}/Sample`,
+    create: `${baseUrl}/Sample`,
+    getById: (id: string) => `${baseUrl}/Sample/${id}`,
+    update: (id: string) => `${baseUrl}/Sample/${id}`,
+    delete: (id: string) => `${baseUrl}/Sample/${id}`,
+    getByTestOrderId: (testOrderId: string) =>
+      `${baseUrl}/Sample/test-order/${testOrderId}`,
+    getByCollectorId: (collectorId: string) =>
+      `${baseUrl}/Sample/collector/${collectorId}`,
+  },
+  Result: {
+    getAll: `${baseUrl}/Result`,
+    create: `${baseUrl}/Result`,
+    getById: (id: string) => `${baseUrl}/Result/${id}`,
+    update: (id: string) => `${baseUrl}/Result/${id}`,
+    delete: (id: string) => `${baseUrl}/Result/${id}`,
   },
 };
