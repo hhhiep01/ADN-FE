@@ -1,87 +1,101 @@
-import { useState } from 'react';
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  getAllResults,
+  type GetAllResultsResponse,
+  type ResultItem,
+} from "../Services/ResultService/GetAllResults";
 
 interface TestResult {
   id: string;
   testType: string;
   date: string;
-  status: 'pending' | 'completed' | 'processing';
+  status: "pending" | "completed" | "processing";
   result?: string;
+  filePath?: string;
 }
 
 const Results = () => {
-  const [searchId, setSearchId] = useState('');
-  const [results, setResults] = useState<TestResult[]>([
-    {
-      id: 'ADN-2024-001',
-      testType: 'Xét nghiệm ADN Cha - Con',
-      date: '2024-02-20',
-      status: 'completed',
-      result: '99.99% khả năng có quan hệ huyết thống'
-    },
-    {
-      id: 'ADN-2024-002',
-      testType: 'Xét nghiệm ADN Mẹ - Con',
-      date: '2024-02-21',
-      status: 'processing'
-    }
-  ]);
+  const [searchId, setSearchId] = useState("");
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Implement search functionality
-    console.log('Searching for:', searchId);
-  };
+  const { data, isLoading, isError, error } = useQuery<GetAllResultsResponse>({
+    queryKey: ["results", searchId],
+    queryFn: ({ signal }) =>
+      getAllResults({ signal, resultId: searchId || undefined }),
+  });
+
+  const results = data?.result || [];
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-12 text-gray-600">Đang tải dữ liệu...</div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center py-12 text-red-600">
+        Lỗi: {error?.message || "Đã xảy ra lỗi khi tải dữ liệu."}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-gray-900">Kết quả xét nghiệm</h1>
 
-      <form onSubmit={handleSearch} className="flex gap-4">
+      <div className="flex items-center space-x-4">
         <input
           type="text"
+          placeholder="Tìm kiếm theo Mã kết quả..."
           value={searchId}
           onChange={(e) => setSearchId(e.target.value)}
-          placeholder="Nhập mã xét nghiệm"
-          className="flex-1 border border-gray-300 rounded-md px-4 py-2"
+          className="px-4 py-2 border rounded-md w-full max-w-sm"
         />
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
-        >
-          Tìm kiếm
-        </button>
-      </form>
+      </div>
 
       <div className="space-y-4">
-        {results.map((result) => (
-          <div key={result.id} className="bg-white p-6 rounded-lg shadow-sm">
+        {results.map((r) => (
+          <div key={r.id} className="bg-white p-4 rounded shadow">
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-xl font-semibold">{result.testType}</h2>
-                <p className="text-gray-600">Mã xét nghiệm: {result.id}</p>
-                <p className="text-gray-600">Ngày thực hiện: {result.date}</p>
+                <h2 className="text-xl font-semibold">Mã kết quả: {r.id}</h2>
+                <p>Mã mẫu: {r.sampleId}</p>
+                <p>
+                  Ngày kết quả: {new Date(r.resultDate).toLocaleDateString()}
+                </p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-sm ${
-                result.status === 'completed' ? 'bg-green-100 text-green-800' :
-                result.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {result.status === 'completed' ? 'Hoàn thành' :
-                 result.status === 'processing' ? 'Đang xử lý' :
-                 'Chờ xử lý'}
-              </span>
             </div>
-            {result.result && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-md">
-                <p className="font-medium">Kết quả:</p>
-                <p className="text-gray-700">{result.result}</p>
+
+            {r.conclusion && (
+              <div className="mt-2">
+                <p className="font-medium">Kết luận:</p>
+                <p>{r.conclusion}</p>
+              </div>
+            )}
+
+            {r.filePath && (
+              <div className="mt-2">
+                <a
+                  href={r.filePath}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  📥 Xem/Tải file PDF
+                </a>
               </div>
             )}
           </div>
         ))}
+        {results.length === 0 && !isLoading && !isError && (
+          <div className="text-center py-12 text-gray-600">
+            Không tìm thấy kết quả nào.
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default Results; 
+export default Results;

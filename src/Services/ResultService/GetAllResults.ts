@@ -20,12 +20,14 @@ export interface GetAllResultsRequest {
   signal?: AbortSignal;
   pageIndex?: number;
   pageSize?: number;
+  resultId?: string;
 }
 
 export const getAllResults = async ({
   signal,
   pageIndex,
   pageSize,
+  resultId,
 }: GetAllResultsRequest): Promise<GetAllResultsResponse> => {
   try {
     const params = new URLSearchParams({});
@@ -35,6 +37,9 @@ export const getAllResults = async ({
     }
     if (pageSize !== undefined) {
       params.append("pageSize", pageSize.toString());
+    }
+    if (resultId !== undefined) {
+      params.append("resultId", resultId);
     }
 
     const response = await httpClient.get({
