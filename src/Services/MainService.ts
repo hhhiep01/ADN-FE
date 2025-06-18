@@ -1,10 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-<<<<<<< HEAD
 const baseUrl = "https://7545-118-69-182-144.ngrok-free.app/api";
-=======
-const baseUrl = "https://2853-115-73-105-67.ngrok-free.app/api";
->>>>>>> hiep_dev
 
 export const queryClient = new QueryClient();
 
