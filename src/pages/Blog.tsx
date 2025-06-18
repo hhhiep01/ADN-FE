@@ -9,7 +9,7 @@ const Blog = () => {
       excerpt: 'Tìm hiểu về xét nghiệm ADN, các trường hợp cần thực hiện và quy trình thực hiện xét nghiệm.',
       date: '20/02/2024',
       category: 'Kiến thức',
-      image: '\swp1.jpg'
+      image: '/swp1.jpg'
     },
     {
       id: 2,
@@ -17,7 +17,7 @@ const Blog = () => {
       excerpt: 'Phân tích về độ chính xác của các phương pháp xét nghiệm ADN huyết thống hiện nay.',
       date: '18/02/2024',
       category: 'Khoa học',
-      image: '\swp2.jpg'
+      image: '/swp2.jpg'
     },
     {
       id: 3,
@@ -25,7 +25,7 @@ const Blog = () => {
       excerpt: 'Hướng dẫn chi tiết về quy trình thu mẫu ADN tại nhà và những lưu ý quan trọng.',
       date: '15/02/2024',
       category: 'Hướng dẫn',
-      image: '\swp3.png'
+      image: '/swp3.png'
     }
   ];
 

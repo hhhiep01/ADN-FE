@@ -24,6 +24,7 @@ import CustomerVerifyEmail from "./pages/CustomerVerifyEmail";
 import StaffVerifyEmail from "./pages/StaffVerifyEmail";
 
 import BlogDetail from "./pages/BlogDetail";
+import BlogManagement from "./pages/BlogManagement";
 
 const queryClient = new QueryClient();
 
@@ -150,6 +151,26 @@ function App() {
               <AdminLayout>
                 <ProtectedRoute allowedRoles={["staff"]}>
                   <ResultManagement />
+                </ProtectedRoute>
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/staff/blog"
+            element={
+              <AdminLayout>
+                <ProtectedRoute allowedRoles={["staff"]}>
+                  <Blog />
+                </ProtectedRoute>
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/staff/blog-management"
+            element={
+              <AdminLayout>
+                <ProtectedRoute allowedRoles={["staff"]}>
+                  <BlogManagement />
                 </ProtectedRoute>
               </AdminLayout>
             }
