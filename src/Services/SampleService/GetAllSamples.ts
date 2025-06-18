@@ -31,7 +31,7 @@ export interface SampleItem {
   collectedBy: number;
   collectorName: string;
   testOrder: TestOrderNested;
-  result: SampleResultNested;
+  result?: SampleResultNested;
   sampleMethod?: SampleMethodNested;
 }
 

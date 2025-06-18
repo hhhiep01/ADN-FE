@@ -28,6 +28,13 @@ const ResultManagement = () => {
     conclusion: "",
     filePath: "",
   });
+  const [selectedUpdateFile, setSelectedUpdateFile] = useState<File | null>(
+    null
+  );
+  const [isUpdatingUploading, setIsUpdatingUploading] = useState(false);
+  const [uploadedUpdateFilePath, setUploadedUpdateFilePath] = useState<
+    string | null
+  >(null);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createFormData, setCreateFormData] = useState<CreateResultRequest>({
@@ -36,6 +43,13 @@ const ResultManagement = () => {
     conclusion: "",
     filePath: "",
   });
+  const [selectedCreateFile, setSelectedCreateFile] = useState<File | null>(
+    null
+  );
+  const [isCreatingUploading, setIsCreatingUploading] = useState(false);
+  const [uploadedCreateFilePath, setUploadedCreateFilePath] = useState<
+    string | null
+  >(null);
 
   const { data, isLoading, isError, error } = useQuery<GetAllResultsResponse>({
     queryKey: ["results"],
@@ -86,6 +100,31 @@ const ResultManagement = () => {
 
   const results = data?.result || [];
 
+  const uploadPdfToCloudinary = async (file: File): Promise<string> => {
+    const CLOUDINARY_CLOUD_NAME = "dku0qdaan"; // Replace with your Cloudinary cloud name
+    const CLOUDINARY_UPLOAD_PRESET = "ADN_SWP"; // Replace with your Cloudinary upload preset
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error.message || "Cloudinary upload failed");
+    }
+
+    const data = await response.json();
+    return data.secure_url;
+  };
+
   if (isLoading) {
     return (
       <div className="text-center py-12 text-gray-600">Đang tải dữ liệu...</div>
@@ -113,12 +152,16 @@ const ResultManagement = () => {
       conclusion: result.conclusion,
       filePath: result.filePath,
     });
+    setSelectedUpdateFile(null);
+    setUploadedUpdateFilePath(result.filePath);
     setShowUpdateModal(true);
   };
 
   const handleModalClose = () => {
     setShowUpdateModal(false);
     setSelectedResult(null);
+    setSelectedUpdateFile(null);
+    setUploadedUpdateFilePath(null);
   };
 
   const handleFormChange = (
@@ -131,17 +174,35 @@ const ResultManagement = () => {
     }));
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleUpdateFileUpload = async (file: File) => {
+    setIsUpdatingUploading(true);
+    try {
+      const url = await uploadPdfToCloudinary(file);
+      setUploadedUpdateFilePath(url);
+      setUpdateFormData((prev) => ({ ...prev, filePath: url }));
+      alert("Tải lên tệp thành công!");
+    } catch (err: any) {
+      alert(`Lỗi tải lên tệp: ${err.message}`);
+    } finally {
+      setIsUpdatingUploading(false);
+    }
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedResult) {
+    if (!selectedResult || !uploadedUpdateFilePath) return;
+
+    try {
       const payload: UpdateResultRequest = {
         id: selectedResult.id,
         sampleId: selectedResult.sampleId,
         resultDate: updateFormData.resultDate,
         conclusion: updateFormData.conclusion,
-        filePath: updateFormData.filePath,
+        filePath: uploadedUpdateFilePath,
       };
       updateResultMutation.mutate(payload);
+    } catch (err: any) {
+      alert(`Lỗi cập nhật kết quả: ${err.message}`);
     }
   };
 
@@ -152,11 +213,15 @@ const ResultManagement = () => {
       conclusion: "",
       filePath: "",
     });
+    setSelectedCreateFile(null);
+    setUploadedCreateFilePath(null);
     setShowCreateModal(true);
   };
 
   const handleCreateModalClose = () => {
     setShowCreateModal(false);
+    setSelectedCreateFile(null);
+    setUploadedCreateFilePath(null);
   };
 
   const handleCreateFormChange = (
@@ -169,9 +234,34 @@ const ResultManagement = () => {
     }));
   };
 
-  const handleCreateFormSubmit = (e: React.FormEvent) => {
+  const handleCreateFileUpload = async (file: File) => {
+    setIsCreatingUploading(true);
+    try {
+      const url = await uploadPdfToCloudinary(file);
+      setUploadedCreateFilePath(url);
+      setCreateFormData((prev) => ({ ...prev, filePath: url }));
+      alert("Tải lên tệp thành công!");
+    } catch (err: any) {
+      alert(`Lỗi tải lên tệp: ${err.message}`);
+    } finally {
+      setIsCreatingUploading(false);
+    }
+  };
+
+  const handleCreateFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    createResultMutation.mutate(createFormData);
+    if (!uploadedCreateFilePath) return;
+
+    try {
+      const payload: CreateResultRequest = {
+        ...createFormData,
+        filePath: uploadedCreateFilePath,
+      };
+
+      createResultMutation.mutate(payload);
+    } catch (err: any) {
+      alert(`Lỗi tạo kết quả: ${err.message}`);
+    }
   };
 
   return (
@@ -241,9 +331,6 @@ const ResultManagement = () => {
                   <div className="text-sm text-gray-900">{result.filePath}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-blue-600 hover:text-blue-900 mr-3">
-                    Chi tiết
-                  </button>
                   <button
                     onClick={() => handleUpdateClick(result)}
                     className="text-green-600 hover:text-green-900 mr-3"
@@ -314,13 +401,35 @@ const ResultManagement = () => {
                   Đường dẫn tệp
                 </label>
                 <input
-                  type="text"
+                  type="file"
                   id="filePath"
                   name="filePath"
-                  value={updateFormData.filePath}
-                  onChange={handleFormChange}
+                  onChange={(e) =>
+                    setSelectedUpdateFile(
+                      e.target.files ? e.target.files[0] : null
+                    )
+                  }
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
+                {updateFormData.filePath &&
+                  (selectedUpdateFile || updateFormData.filePath) && (
+                    <a
+                      href={updateFormData.filePath}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline mt-2 inline-block"
+                    >
+                      📄 Xem file hiện tại
+                    </a>
+                  )}
+                <button
+                  type="button"
+                  onClick={() => handleUpdateFileUpload(selectedUpdateFile!)}
+                  disabled={!selectedUpdateFile || isUpdatingUploading}
+                  className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {isUpdatingUploading ? "Đang tải..." : "Tải lên file"}
+                </button>
               </div>
               <div className="flex justify-end space-x-3">
                 <button
@@ -333,7 +442,9 @@ const ResultManagement = () => {
                 <button
                   type="submit"
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  disabled={updateResultMutation.isPending}
+                  disabled={
+                    updateResultMutation.isPending || !uploadedUpdateFilePath
+                  }
                 >
                   Cập nhật
                 </button>
@@ -405,13 +516,35 @@ const ResultManagement = () => {
                   Đường dẫn tệp
                 </label>
                 <input
-                  type="text"
+                  type="file"
                   id="createFilePath"
                   name="filePath"
-                  value={createFormData.filePath}
-                  onChange={handleCreateFormChange}
+                  onChange={(e) =>
+                    setSelectedCreateFile(
+                      e.target.files ? e.target.files[0] : null
+                    )
+                  }
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  required
                 />
+                {uploadedCreateFilePath && (
+                  <a
+                    href={uploadedCreateFilePath}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline mt-2 inline-block"
+                  >
+                    📄 Xem file đã tải lên
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleCreateFileUpload(selectedCreateFile!)}
+                  disabled={!selectedCreateFile || isCreatingUploading}
+                  className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {isCreatingUploading ? "Đang tải..." : "Tải lên file"}
+                </button>
               </div>
               <div className="flex justify-end space-x-3">
                 <button
@@ -424,7 +557,9 @@ const ResultManagement = () => {
                 <button
                   type="submit"
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  disabled={createResultMutation.isPending}
+                  disabled={
+                    createResultMutation.isPending || !uploadedCreateFilePath
+                  }
                 >
                   Thêm
                 </button>

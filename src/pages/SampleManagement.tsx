@@ -14,6 +14,22 @@ import {
 
 const SampleManagement = () => {
   const [selectedStatus, setSelectedStatus] = useState<number | "all">("all");
+  const [selectedResult, setSelectedResult] = useState<SampleItem | null>(null);
+  const [updateFormData, setUpdateFormData] = useState<UpdateResultRequest>({
+    id: 0,
+    sampleId: 0,
+    resultDate: "",
+    conclusion: "",
+    filePath: "",
+  });
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showUpdateResultModal, setShowUpdateResultModal] = useState(false);
+  const [selectedUpdateResultFile, setSelectedUpdateResultFile] =
+    useState<File | null>(null);
+  const [isUpdatingResultUploading, setIsUpdatingResultUploading] =
+    useState(false);
+  const [uploadedUpdateResultFilePath, setUploadedUpdateResultFilePath] =
+    useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -71,14 +87,122 @@ const SampleManagement = () => {
   };
 
   const handleUpdateResult = (sample: SampleItem) => {
-    const payload: UpdateResultRequest = {
-      id: sample.result.id,
+    setSelectedResult(sample);
+    setUpdateFormData({
+      id: sample.result?.id || 0,
       sampleId: sample.id,
-      resultDate: sample.result.resultDate,
-      conclusion: sample.result.conclusion,
-      filePath: sample.result.filePath,
-    };
-    updateResultMutation.mutate(payload);
+      resultDate: sample.result?.resultDate || "",
+      conclusion: sample.result?.conclusion || "",
+      filePath: sample.result?.filePath || "",
+    });
+    setSelectedUpdateResultFile(null);
+    setUploadedUpdateResultFilePath(sample.result?.filePath || null);
+    setShowUpdateResultModal(true);
+  };
+
+  const handleUpdateClick = (sample: SampleItem) => {
+    setSelectedResult(sample);
+    setUpdateFormData({
+      id: sample.result?.id || 0,
+      sampleId: sample.id,
+      resultDate: sample.result?.resultDate || "",
+      conclusion: sample.result?.conclusion || "",
+      filePath: sample.result?.filePath || "",
+    });
+    setShowUpdateModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowUpdateModal(false);
+    setSelectedResult(null);
+    setUpdateFormData({
+      id: 0,
+      sampleId: 0,
+      resultDate: "",
+      conclusion: "",
+      filePath: "",
+    });
+  };
+
+  const handleUpdateResultModalClose = () => {
+    setShowUpdateResultModal(false);
+    setSelectedResult(null);
+    setUpdateFormData({
+      id: 0,
+      sampleId: 0,
+      resultDate: "",
+      conclusion: "",
+      filePath: "",
+    });
+    setSelectedUpdateResultFile(null);
+    setIsUpdatingResultUploading(false);
+    setUploadedUpdateResultFilePath(null);
+  };
+
+  const handleUpdateResultFormChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setUpdateFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const uploadPdfToCloudinary = async (file: File): Promise<string> => {
+    const CLOUDINARY_CLOUD_NAME = "dku0qdaan"; // Use your actual Cloudinary cloud name
+    const CLOUDINARY_UPLOAD_PRESET = "ADN_SWP"; // Use your actual Cloudinary upload preset
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error.message || "Cloudinary upload failed");
+    }
+
+    const data = await response.json();
+    return data.secure_url;
+  };
+
+  const handleUpdateResultFileUpload = async () => {
+    if (!selectedUpdateResultFile) return;
+
+    setIsUpdatingResultUploading(true);
+    try {
+      const url = await uploadPdfToCloudinary(selectedUpdateResultFile);
+      setUploadedUpdateResultFilePath(url);
+      setUpdateFormData((prev) => ({ ...prev, filePath: url }));
+      alert("Tải lên tệp thành công!");
+    } catch (err: any) {
+      alert(`Lỗi tải lên tệp: ${err.message}`);
+    } finally {
+      setIsUpdatingResultUploading(false);
+    }
+  };
+
+  const handleUpdateResultFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedResult) {
+      const payload: UpdateResultRequest = {
+        id: updateFormData.id,
+        sampleId: updateFormData.sampleId,
+        resultDate: updateFormData.resultDate,
+        conclusion: updateFormData.conclusion,
+        filePath: uploadedUpdateResultFilePath || updateFormData.filePath,
+      };
+      updateResultMutation.mutate(payload);
+    }
+    setShowUpdateResultModal(false);
   };
 
   return (
@@ -142,15 +266,16 @@ const SampleManagement = () => {
                 Ghi chú
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Kết quả
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Thao tác
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {samples.map((sample: SampleItem) => {
+              console.log(
+                "Debug: sample.result in SampleManagement:",
+                sample.result
+              );
               console.log("Sample Method:", sample.sampleMethod);
               return (
                 <tr key={sample.id}>
@@ -192,21 +317,9 @@ const SampleManagement = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{sample.notes}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {sample.result.conclusion}
-                    </div>
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button className="text-green-600 hover:text-green-900 mr-3">
                       Cập nhật
-                    </button>
-                    <button
-                      onClick={() => handleUpdateResult(sample)}
-                      className="text-purple-600 hover:text-purple-900 mr-3"
-                      disabled={updateResultMutation.isPending}
-                    >
-                      Cập nhật kết quả
                     </button>
                     <button
                       onClick={() => handleDeleteSample(sample.id)}
@@ -222,6 +335,112 @@ const SampleManagement = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Update Result Modal */}
+      {showUpdateResultModal && selectedResult && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl w-1/3">
+            <h3 className="text-lg font-semibold mb-4">Cập nhật kết quả</h3>
+            <form onSubmit={handleUpdateResultFormSubmit}>
+              <div className="mb-4">
+                <label
+                  htmlFor="updateResultDate"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Ngày kết quả
+                </label>
+                <input
+                  type="date"
+                  id="updateResultDate"
+                  name="resultDate"
+                  value={
+                    new Date(updateFormData.resultDate)
+                      .toISOString()
+                      .split("T")[0]
+                  }
+                  onChange={handleUpdateResultFormChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="updateConclusion"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Kết luận
+                </label>
+                <textarea
+                  id="updateConclusion"
+                  name="conclusion"
+                  rows={3}
+                  value={updateFormData.conclusion}
+                  onChange={handleUpdateResultFormChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                ></textarea>
+              </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="updateFilePath"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Đường dẫn tệp
+                </label>
+                <input
+                  type="file"
+                  id="updateFilePath"
+                  name="filePath"
+                  onChange={(e) =>
+                    setSelectedUpdateResultFile(
+                      e.target.files ? e.target.files[0] : null
+                    )
+                  }
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+                {(uploadedUpdateResultFilePath || updateFormData.filePath) && (
+                  <a
+                    href={
+                      uploadedUpdateResultFilePath || updateFormData.filePath
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline mt-2 inline-block"
+                  >
+                    📄 Xem file hiện tại
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={handleUpdateResultFileUpload}
+                  disabled={
+                    !selectedUpdateResultFile || isUpdatingResultUploading
+                  }
+                  className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {isUpdatingResultUploading ? "Đang tải..." : "Tải lên file"}
+                </button>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleUpdateResultModalClose}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={
+                    updateResultMutation.isPending || isUpdatingResultUploading
+                  }
+                >
+                  Cập nhật
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
