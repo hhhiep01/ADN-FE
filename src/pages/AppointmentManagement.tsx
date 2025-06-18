@@ -1,70 +1,218 @@
-import { useState } from 'react';
+import { useState } from "react";
+import {
+  type TestOrderItem,
+  getAllTestOrders,
+} from "../Services/TestOrderService/GetAllTestOrder";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { updateTestOrderDeliveryStatus } from "../Services/TestOrderService/UpdateTestOrderDeliveryStatus";
+import { updateTestOrderStatus } from "../Services/TestOrderService/UpdateTestOrderStatus";
 
-interface Appointment {
-  id: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  testType: string;
-  appointmentDate: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  result?: string;
-  createdAt: string;
-}
+const sampleCollectionMethods = [
+  {
+    id: 2,
+    name: "Lấy mẫu tại trung tâm",
+  },
+  {
+    id: 3,
+    name: "Nhân viên lấy mẫu tại nhà",
+  },
+  {
+    id: 1,
+    name: "Tự lấy mẫu tại nhà",
+  },
+];
 
 const AppointmentManagement = () => {
-  const [appointments] = useState<Appointment[]>([
-    {
-      id: '1',
-      customerName: 'Nguyễn Văn A',
-      customerEmail: 'nguyenvana@example.com',
-      customerPhone: '0123456789',
-      testType: 'Xét nghiệm ADN cha con',
-      appointmentDate: '2024-03-01 09:00',
-      status: 'pending',
-      createdAt: '2024-02-20'
-    },
-    {
-      id: '2',
-      customerName: 'Trần Thị B',
-      customerEmail: 'tranthib@example.com',
-      customerPhone: '0987654321',
-      testType: 'Xét nghiệm ADN huyết thống',
-      appointmentDate: '2024-03-02 14:00',
-      status: 'confirmed',
-      result: 'Kết quả: 99.99% khả năng có quan hệ huyết thống',
-      createdAt: '2024-02-21'
-    }
-  ]);
+  const [selectedMethod, setSelectedMethod] = useState<number | "all">("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10); // You can make this dynamic if needed
+  const [selectedStatus, setSelectedStatus] = useState<number | "all">("all");
 
-  const getStatusColor = (status: Appointment['status']) => {
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: [
+      "testOrders",
+      selectedMethod,
+      currentPage,
+      itemsPerPage,
+      selectedStatus,
+    ],
+    queryFn: ({ signal }) =>
+      getAllTestOrders({
+        signal,
+        sampleMethodId: selectedMethod,
+        pageIndex: currentPage,
+        pageSize: itemsPerPage,
+        testOrderStatus: selectedStatus,
+      }),
+  });
+
+  const updateDeliveryStatusMutation = useMutation({
+    mutationFn: updateTestOrderDeliveryStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["testOrders"] });
+      alert("Cập nhật trạng thái kit lấy mẫu thành công!");
+    },
+    onError: (err) => {
+      alert(`Lỗi cập nhật trạng thái kit lấy mẫu: ${err.message}`);
+    },
+  });
+
+  const updateAppointmentStatusMutation = useMutation({
+    mutationFn: updateTestOrderStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["testOrders"] });
+      alert("Cập nhật trạng thái đơn hẹn thành công!");
+    },
+    onError: (err) => {
+      alert(`Lỗi cập nhật trạng thái đơn hẹn: ${err.message}`);
+    },
+  });
+
+  const appointments = data?.result?.items || [];
+  const totalItems = data?.result?.total || 0;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  const getStatusColor = (status: number) => {
     switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed':
-        return 'bg-blue-100 text-blue-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
+      case 0: // Pending
+        return "bg-yellow-100 text-yellow-800";
+      case 1: // Confirmed
+        return "bg-blue-100 text-blue-800";
+      case 2: // Completed
+        return "bg-green-100 text-green-800";
+      case 3: // Cancelled
+        return "bg-red-100 text-red-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
+
+  const getStatusText = (status: number) => {
+    switch (status) {
+      case 0:
+        return "Chờ xác nhận";
+      case 1:
+        return "Đã xác nhận";
+      case 2:
+        return "Hoàn thành";
+      case 3:
+        return "Đã hủy";
+      default:
+        return "Không xác định";
+    }
+  };
+
+  const getDeliveryKitStatusText = (status: number) => {
+    switch (status) {
+      case 0:
+        return "Chưa gửi";
+      case 1:
+        return "Đã gửi";
+      case 2:
+        return "Đã nhận";
+      case 3:
+        return "Đã trả về";
+      default:
+        return "Không xác định";
+    }
+  };
+
+  const handleDeliveryStatusChange = (id: number, newStatus: number) => {
+    updateDeliveryStatusMutation.mutate({ id, deliveryKitStatus: newStatus });
+  };
+
+  const handleAppointmentStatusChange = (id: number, newStatus: number) => {
+    updateAppointmentStatusMutation.mutate({ id, testOrderStatus: newStatus });
+  };
+
+  const filteredAppointments = appointments;
+
+  const handlePageChange = (page: number) => {
+    if (page > 0 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const renderPageNumbers = () => {
+    const pageNumbers = [];
+    const maxPageButtons = 5; // Max number of page buttons to display
+    const startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
+    const endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`px-3 py-1 border rounded-md ${
+            currentPage === i ? "bg-blue-600 text-white" : "hover:bg-gray-50"
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+    return pageNumbers;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-12 text-gray-600">Đang tải dữ liệu...</div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center py-12 text-red-600">
+        Lỗi: {error?.message || "Đã xảy ra lỗi khi tải dữ liệu."}
+      </div>
+    );
+  }
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
 
   return (
     <div className="bg-white rounded-lg shadow">
       {/* Header */}
       <div className="px-6 py-4 border-b">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-800">Danh sách đơn hẹn</h2>
+          <h2 className="text-xl font-semibold text-gray-800">
+            Danh sách đơn hẹn
+          </h2>
           <div className="flex space-x-4">
-            <select className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select
+              className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={selectedMethod}
+              onChange={(e) =>
+                setSelectedMethod(
+                  e.target.value === "all" ? "all" : Number(e.target.value)
+                )
+              }
+            >
+              <option value="all">Tất cả phương thức lấy mẫu</option>
+              {sampleCollectionMethods.map((method) => (
+                <option key={method.id} value={method.id}>
+                  {method.name}
+                </option>
+              ))}
+            </select>
+            <select
+              className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={selectedStatus}
+              onChange={(e) =>
+                setSelectedStatus(
+                  e.target.value === "all" ? "all" : Number(e.target.value)
+                )
+              }
+            >
               <option value="all">Tất cả trạng thái</option>
-              <option value="pending">Chờ xác nhận</option>
-              <option value="confirmed">Đã xác nhận</option>
-              <option value="completed">Hoàn thành</option>
-              <option value="cancelled">Đã hủy</option>
+              <option value={0}>Chờ xác nhận</option>
+              <option value={1}>Đã xác nhận</option>
+              <option value={2}>Hoàn thành</option>
+              <option value={3}>Đã hủy</option>
             </select>
             <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               Thêm đơn hẹn
@@ -79,19 +227,34 @@ const AppointmentManagement = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Mã đơn hẹn
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Khách hàng
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Email
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Số điện thoại
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Loại xét nghiệm
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Phương thức lấy mẫu
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Địa điểm hẹn
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Trạng thái kit lấy mẫu
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Ngày hẹn
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Trạng thái
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ngày tạo
+                Trạng thái đơn hẹn
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Thao tác
@@ -102,26 +265,84 @@ const AppointmentManagement = () => {
             {appointments.map((appointment) => (
               <tr key={appointment.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{appointment.customerName}</div>
-                  <div className="text-sm text-gray-500">{appointment.customerEmail}</div>
-                  <div className="text-sm text-gray-500">{appointment.customerPhone}</div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {appointment.id}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{appointment.testType}</div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {appointment.userName}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{appointment.appointmentDate}</div>
+                  <div className="text-sm text-gray-900">
+                    {appointment.email}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(appointment.status)}`}>
-                    {appointment.status === 'pending' && 'Chờ xác nhận'}
-                    {appointment.status === 'confirmed' && 'Đã xác nhận'}
-                    {appointment.status === 'completed' && 'Hoàn thành'}
-                    {appointment.status === 'cancelled' && 'Đã hủy'}
-                  </span>
+                  <div className="text-sm text-gray-900">
+                    {appointment.phoneNumber}
+                  </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {appointment.createdAt}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">
+                    {appointment.services.name}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">
+                    {appointment.sampleMethods.name}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">
+                    {appointment.appointmentLocation}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {appointment.sampleMethods.id === 1 ? (
+                    <select
+                      value={appointment.deliveryKitStatus}
+                      onChange={(e) =>
+                        handleDeliveryStatusChange(
+                          appointment.id,
+                          Number(e.target.value)
+                        )
+                      }
+                      className="px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={updateDeliveryStatusMutation.isPending}
+                    >
+                      <option value={0}>Chưa gửi</option>
+                      <option value={1}>Đã gửi</option>
+                      <option value={2}>Đã nhận</option>
+                      <option value={3}>Đã trả về</option>
+                    </select>
+                  ) : (
+                    <span className="text-gray-500">-</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">
+                    {new Date(appointment.appointmentDate).toLocaleDateString()}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <select
+                    value={appointment.status}
+                    onChange={(e) =>
+                      handleAppointmentStatusChange(
+                        appointment.id,
+                        Number(e.target.value)
+                      )
+                    }
+                    className="px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={updateAppointmentStatusMutation.isPending}
+                  >
+                    <option value={0}>Chờ xác nhận</option>
+                    <option value={1}>Đã xác nhận</option>
+                    <option value={2}>Hoàn thành</option>
+                    <option value={3}>Đã hủy</option>
+                  </select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button className="text-blue-600 hover:text-blue-900 mr-3">
@@ -141,22 +362,22 @@ const AppointmentManagement = () => {
       <div className="px-6 py-4 border-t">
         <div className="flex justify-between items-center">
           <div className="text-sm text-gray-500">
-            Hiển thị 1 đến 10 của 100 kết quả
+            Hiển thị {startIndex + 1} đến {endIndex} của {totalItems} kết quả
           </div>
           <div className="flex space-x-2">
-            <button className="px-3 py-1 border rounded-md hover:bg-gray-50">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Trước
             </button>
-            <button className="px-3 py-1 border rounded-md bg-blue-600 text-white">
-              1
-            </button>
-            <button className="px-3 py-1 border rounded-md hover:bg-gray-50">
-              2
-            </button>
-            <button className="px-3 py-1 border rounded-md hover:bg-gray-50">
-              3
-            </button>
-            <button className="px-3 py-1 border rounded-md hover:bg-gray-50">
+            {renderPageNumbers()}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Sau
             </button>
           </div>
@@ -166,4 +387,4 @@ const AppointmentManagement = () => {
   );
 };
 
-export default AppointmentManagement; 
+export default AppointmentManagement;
