@@ -6,6 +6,10 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateTestOrderDeliveryStatus } from "../Services/TestOrderService/UpdateTestOrderDeliveryStatus";
 import { updateTestOrderStatus } from "../Services/TestOrderService/UpdateTestOrderStatus";
+import {
+  updateTestOrder,
+  type UpdateTestOrderRequest,
+} from "../Services/TestOrderService/UpdateTestOrder";
 
 const sampleCollectionMethods = [
   {
@@ -27,6 +31,21 @@ const AppointmentManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10); // You can make this dynamic if needed
   const [selectedStatus, setSelectedStatus] = useState<number | "all">("all");
+
+  // Edit modal states
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [editingTestOrder, setEditingTestOrder] =
+    useState<TestOrderItem | null>(null);
+  const [editFormData, setEditFormData] = useState<UpdateTestOrderRequest>({
+    id: 0,
+    serviceId: 0,
+    sampleMethodId: 0,
+    phoneNumber: "",
+    email: "",
+    fullName: "",
+    appointmentDate: "",
+    appointmentLocation: "",
+  });
 
   const queryClient = useQueryClient();
 
@@ -67,6 +86,19 @@ const AppointmentManagement = () => {
     },
     onError: (err) => {
       alert(`Lỗi cập nhật trạng thái đơn hẹn: ${err.message}`);
+    },
+  });
+
+  const updateTestOrderMutation = useMutation({
+    mutationFn: updateTestOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["testOrders"] });
+      setIsEditModalOpen(false);
+      setEditingTestOrder(null);
+      alert("Cập nhật đơn hẹn thành công!");
+    },
+    onError: (err) => {
+      alert(`Lỗi cập nhật đơn hẹn: ${err.message}`);
     },
   });
 
@@ -125,6 +157,38 @@ const AppointmentManagement = () => {
 
   const handleAppointmentStatusChange = (id: number, newStatus: number) => {
     updateAppointmentStatusMutation.mutate({ id, testOrderStatus: newStatus });
+  };
+
+  const handleEdit = (testOrder: TestOrderItem) => {
+    setEditingTestOrder(testOrder);
+    setEditFormData({
+      id: testOrder.id,
+      serviceId: testOrder.services.id,
+      sampleMethodId: testOrder.sampleMethods.id,
+      phoneNumber: testOrder.phoneNumber,
+      email: testOrder.email,
+      fullName: testOrder.fullName,
+      appointmentDate: testOrder.appointmentDate,
+      appointmentLocation: testOrder.appointmentLocation,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setEditFormData((prev) => ({
+      ...prev,
+      [name]:
+        name === "serviceId" || name === "sampleMethodId"
+          ? Number(value)
+          : value,
+    }));
+  };
+
+  const handleUpdateTestOrder = () => {
+    updateTestOrderMutation.mutate(editFormData);
   };
 
   const filteredAppointments = appointments;
@@ -345,8 +409,11 @@ const AppointmentManagement = () => {
                   </select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-blue-600 hover:text-blue-900 mr-3">
-                    Chi tiết
+                  <button
+                    className="text-blue-600 hover:text-blue-900 mr-3"
+                    onClick={() => handleEdit(appointment)}
+                  >
+                    Chỉnh sửa
                   </button>
                   <button className="text-red-600 hover:text-red-900">
                     Hủy
@@ -383,6 +450,129 @@ const AppointmentManagement = () => {
           </div>
         </div>
       </div>
+
+      {/* Edit Test Order Modal */}
+      {isEditModalOpen && editingTestOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-semibold mb-4">Chỉnh sửa đơn hẹn</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Họ và tên
+                </label>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={editFormData.fullName}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={editFormData.email}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Số điện thoại
+                </label>
+                <input
+                  type="tel"
+                  name="phoneNumber"
+                  value={editFormData.phoneNumber}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Loại xét nghiệm
+                </label>
+                <select
+                  name="serviceId"
+                  value={editFormData.serviceId}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value={editingTestOrder.services.id}>
+                    {editingTestOrder.services.name}
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Phương thức lấy mẫu
+                </label>
+                <select
+                  name="sampleMethodId"
+                  value={editFormData.sampleMethodId}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {sampleCollectionMethods.map((method) => (
+                    <option key={method.id} value={method.id}>
+                      {method.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Địa điểm hẹn
+                </label>
+                <input
+                  type="text"
+                  name="appointmentLocation"
+                  value={editFormData.appointmentLocation}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Ngày hẹn
+                </label>
+                <input
+                  type="datetime-local"
+                  name="appointmentDate"
+                  value={editFormData.appointmentDate.slice(0, 16)}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingTestOrder(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleUpdateTestOrder}
+                disabled={updateTestOrderMutation.isPending}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {updateTestOrderMutation.isPending
+                  ? "Đang cập nhật..."
+                  : "Cập nhật"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

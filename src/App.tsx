@@ -72,7 +72,7 @@ function App() {
           />
 
           <Route
-            path="/blog-detail"
+            path="/blog-detail/:id"
             element={
               <Layout>
                 <BlogDetail />

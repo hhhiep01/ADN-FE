@@ -11,6 +11,14 @@ import {
   updateResult,
   type UpdateResultRequest,
 } from "../Services/ResultService/UpdateResult";
+import {
+  updateSample,
+  type UpdateSampleRequest,
+} from "../Services/SampleService/UpdateSample";
+import {
+  createSample,
+  type CreateSampleRequest,
+} from "../Services/SampleService/CreateSample";
 
 const SampleManagement = () => {
   const [selectedStatus, setSelectedStatus] = useState<number | "all">("all");
@@ -30,6 +38,31 @@ const SampleManagement = () => {
     useState(false);
   const [uploadedUpdateResultFilePath, setUploadedUpdateResultFilePath] =
     useState<string | null>(null);
+
+  // Sample editing states
+  const [showSampleEditModal, setShowSampleEditModal] = useState(false);
+  const [selectedSampleForEdit, setSelectedSampleForEdit] =
+    useState<SampleItem | null>(null);
+  const [sampleEditFormData, setSampleEditFormData] =
+    useState<UpdateSampleRequest>({
+      id: 0,
+      testOrderId: 0,
+      collectionDate: "",
+      receivedDate: "",
+      sampleStatus: 0,
+      notes: "",
+      collectedBy: 0,
+    });
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createFormData, setCreateFormData] = useState<CreateSampleRequest>({
+    testOrderId: 0,
+    collectionDate: "",
+    receivedDate: "",
+    sampleStatus: 0,
+    notes: "",
+    collectedBy: 0,
+  });
 
   const queryClient = useQueryClient();
 
@@ -61,6 +94,39 @@ const SampleManagement = () => {
     },
     onError: (err) => {
       alert(`Lỗi cập nhật kết quả: ${err.message}`);
+    },
+  });
+
+  const updateSampleMutation = useMutation({
+    mutationFn: updateSample,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["samples"] });
+      setShowSampleEditModal(false);
+      setSelectedSampleForEdit(null);
+      alert("Cập nhật mẫu thành công!");
+    },
+    onError: (err) => {
+      alert(`Lỗi cập nhật mẫu: ${err.message}`);
+    },
+  });
+
+  const createSampleMutation = useMutation({
+    mutationFn: createSample,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["samples"] });
+      setShowCreateModal(false);
+      setCreateFormData({
+        testOrderId: 0,
+        collectionDate: "",
+        receivedDate: "",
+        sampleStatus: 0,
+        notes: "",
+        collectedBy: 0,
+      });
+      alert("Tạo mẫu mới thành công!");
+    },
+    onError: (err) => {
+      alert(`Lỗi tạo mẫu mới: ${err.message}`);
     },
   });
 
@@ -205,6 +271,86 @@ const SampleManagement = () => {
     setShowUpdateResultModal(false);
   };
 
+  const handleSampleEdit = (sample: SampleItem) => {
+    setSelectedSampleForEdit(sample);
+    setSampleEditFormData({
+      id: sample.id,
+      testOrderId: sample.testOrder.id,
+      collectionDate: sample.collectionDate,
+      receivedDate: sample.receivedDate,
+      sampleStatus: sample.sampleStatus,
+      notes: sample.notes,
+      collectedBy: sample.collectedBy,
+    });
+    setShowSampleEditModal(true);
+  };
+
+  const handleSampleEditFormChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setSampleEditFormData((prev) => ({
+      ...prev,
+      [name]:
+        name === "testOrderId" ||
+        name === "sampleStatus" ||
+        name === "collectedBy"
+          ? Number(value)
+          : value,
+    }));
+  };
+
+  const handleSampleEditFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    updateSampleMutation.mutate(sampleEditFormData);
+  };
+
+  const handleSampleEditModalClose = () => {
+    setShowSampleEditModal(false);
+    setSelectedSampleForEdit(null);
+  };
+
+  // Create sample handlers
+  const handleCreateModalOpen = () => {
+    setShowCreateModal(true);
+    setCreateFormData({
+      testOrderId: 0,
+      collectionDate: "",
+      receivedDate: "",
+      sampleStatus: 0,
+      notes: "",
+      collectedBy: 0,
+    });
+  };
+
+  const handleCreateModalClose = () => {
+    setShowCreateModal(false);
+  };
+
+  const handleCreateFormChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setCreateFormData((prev) => ({
+      ...prev,
+      [name]:
+        name === "testOrderId" ||
+        name === "sampleStatus" ||
+        name === "collectedBy"
+          ? Number(value)
+          : value,
+    }));
+  };
+
+  const handleCreateFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createSampleMutation.mutate(createFormData);
+  };
+
   return (
     <div className="bg-white rounded-lg shadow">
       {/* Header */}
@@ -229,7 +375,10 @@ const SampleManagement = () => {
               <option value={2}>Hoàn thành</option>
               <option value={3}>Đã hủy</option>
             </select>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <button
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              onClick={handleCreateModalOpen}
+            >
               Thêm mẫu mới
             </button>
           </div>
@@ -242,7 +391,7 @@ const SampleManagement = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Mã mẫu
+                Mã mẫu xét nghiệm
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Mã đơn hẹn
@@ -318,7 +467,10 @@ const SampleManagement = () => {
                     <div className="text-sm text-gray-900">{sample.notes}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button className="text-green-600 hover:text-green-900 mr-3">
+                    <button
+                      onClick={() => handleSampleEdit(sample)}
+                      className="text-green-600 hover:text-green-900 mr-3"
+                    >
                       Cập nhật
                     </button>
                     <button
@@ -435,6 +587,283 @@ const SampleManagement = () => {
                   }
                 >
                   Cập nhật
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Sample Edit Modal */}
+      {showSampleEditModal && selectedSampleForEdit && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl w-1/2 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">Chỉnh sửa mẫu</h3>
+            <form onSubmit={handleSampleEditFormSubmit}>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="mb-4">
+                  <label
+                    htmlFor="sampleId"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Mã mẫu xét nghiệm
+                  </label>
+                  <input
+                    type="number"
+                    id="sampleId"
+                    name="id"
+                    value={sampleEditFormData.id}
+                    onChange={handleSampleEditFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    readOnly
+                  />
+                </div>
+                <div className="mb-4">
+                  <label
+                    htmlFor="testOrderId"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    ID Đơn hẹn
+                  </label>
+                  <input
+                    type="number"
+                    id="testOrderId"
+                    name="testOrderId"
+                    value={sampleEditFormData.testOrderId}
+                    onChange={handleSampleEditFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label
+                    htmlFor="collectionDate"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Ngày lấy mẫu
+                  </label>
+                  <input
+                    type="datetime-local"
+                    id="collectionDate"
+                    name="collectionDate"
+                    value={sampleEditFormData.collectionDate.slice(0, 16)}
+                    onChange={handleSampleEditFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label
+                    htmlFor="receivedDate"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Ngày nhận mẫu
+                  </label>
+                  <input
+                    type="datetime-local"
+                    id="receivedDate"
+                    name="receivedDate"
+                    value={sampleEditFormData.receivedDate.slice(0, 16)}
+                    onChange={handleSampleEditFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label
+                    htmlFor="sampleStatus"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Trạng thái mẫu
+                  </label>
+                  <select
+                    id="sampleStatus"
+                    name="sampleStatus"
+                    value={sampleEditFormData.sampleStatus}
+                    onChange={handleSampleEditFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  >
+                    <option value={0}>Chờ xử lý</option>
+                    <option value={1}>Đang xử lý</option>
+                    <option value={2}>Hoàn thành</option>
+                    <option value={3}>Đã hủy</option>
+                  </select>
+                </div>
+                <div className="mb-4">
+                  <label
+                    htmlFor="collectedBy"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    ID Người lấy mẫu
+                  </label>
+                  <input
+                    type="number"
+                    id="collectedBy"
+                    name="collectedBy"
+                    value={sampleEditFormData.collectedBy}
+                    onChange={handleSampleEditFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="notes"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Ghi chú
+                </label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  rows={3}
+                  value={sampleEditFormData.notes}
+                  onChange={handleSampleEditFormChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                ></textarea>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleSampleEditModalClose}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  disabled={updateSampleMutation.isPending}
+                >
+                  {updateSampleMutation.isPending
+                    ? "Đang cập nhật..."
+                    : "Cập nhật mẫu"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Sample Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl w-1/2 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">Thêm mẫu mới</h3>
+            <form onSubmit={handleCreateFormSubmit}>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="mb-4">
+                  <label
+                    htmlFor="createTestOrderId"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    ID Đơn hẹn
+                  </label>
+                  <input
+                    type="number"
+                    id="createTestOrderId"
+                    name="testOrderId"
+                    value={createFormData.testOrderId}
+                    onChange={handleCreateFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label
+                    htmlFor="createCollectionDate"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Ngày lấy mẫu
+                  </label>
+                  <input
+                    type="datetime-local"
+                    id="createCollectionDate"
+                    name="collectionDate"
+                    value={createFormData.collectionDate.slice(0, 16)}
+                    onChange={handleCreateFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label
+                    htmlFor="createReceivedDate"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Ngày nhận mẫu
+                  </label>
+                  <input
+                    type="datetime-local"
+                    id="createReceivedDate"
+                    name="receivedDate"
+                    value={createFormData.receivedDate.slice(0, 16)}
+                    onChange={handleCreateFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label
+                    htmlFor="createSampleStatus"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Trạng thái mẫu
+                  </label>
+                  <select
+                    id="createSampleStatus"
+                    name="sampleStatus"
+                    value={createFormData.sampleStatus}
+                    onChange={handleCreateFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  >
+                    <option value={0}>Chờ xử lý</option>
+                    <option value={1}>Đang xử lý</option>
+                    <option value={2}>Hoàn thành</option>
+                    <option value={3}>Đã hủy</option>
+                  </select>
+                </div>
+                <div className="mb-4">
+                  <label
+                    htmlFor="createCollectedBy"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    ID Người lấy mẫu
+                  </label>
+                  <input
+                    type="number"
+                    id="createCollectedBy"
+                    name="collectedBy"
+                    value={createFormData.collectedBy}
+                    onChange={handleCreateFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="createNotes"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Ghi chú
+                </label>
+                <textarea
+                  id="createNotes"
+                  name="notes"
+                  rows={3}
+                  value={createFormData.notes}
+                  onChange={handleCreateFormChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                ></textarea>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCreateModalClose}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={createSampleMutation.isPending}
+                >
+                  {createSampleMutation.isPending ? "Đang tạo..." : "Tạo mẫu"}
                 </button>
               </div>
             </form>

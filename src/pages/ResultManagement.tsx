@@ -56,6 +56,33 @@ const ResultManagement = () => {
     queryFn: ({ signal }) => getAllResults({ signal }),
   });
 
+  const parseErrorMessage = (err: any) => {
+    if (err?.data?.result) return err.data.result;
+    // Nếu message là JSON hoặc có prefix "Error: "
+    if (err?.message && typeof err.message === "string") {
+      let msg = err.message.trim();
+      // Nếu có prefix "Error: ", cắt bỏ
+      if (msg.startsWith("Error: ")) {
+        msg = msg.slice(7);
+      }
+      if (msg.startsWith("{") && msg.endsWith("}")) {
+        try {
+          const parsed = JSON.parse(msg);
+          return (
+            parsed.result ||
+            parsed.errorMessage ||
+            parsed.message ||
+            "Lỗi không xác định"
+          );
+        } catch {
+          return err.message;
+        }
+      }
+      return msg;
+    }
+    return "Lỗi không xác định";
+  };
+
   const deleteResultMutation = useMutation({
     mutationFn: deleteResult,
     onSuccess: () => {
@@ -63,7 +90,7 @@ const ResultManagement = () => {
       alert("Xóa kết quả thành công!");
     },
     onError: (err) => {
-      alert(`Lỗi xóa kết quả: ${err.message}`);
+      alert(parseErrorMessage(err));
     },
   });
 
@@ -76,13 +103,13 @@ const ResultManagement = () => {
       alert("Cập nhật kết quả thành công!");
     },
     onError: (err) => {
-      alert(`Lỗi cập nhật kết quả: ${err.message}`);
+      alert(parseErrorMessage(err));
     },
   });
 
   const createResultMutation = useMutation({
     mutationFn: createResult,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["results"] });
       setShowCreateModal(false);
       setCreateFormData({
@@ -91,10 +118,10 @@ const ResultManagement = () => {
         conclusion: "",
         filePath: "",
       });
-      alert("Thêm kết quả mới thành công!");
+      alert(data.result || "Thêm kết quả mới thành công!");
     },
     onError: (err) => {
-      alert(`Lỗi thêm kết quả mới: ${err.message}`);
+      alert(parseErrorMessage(err));
     },
   });
 
@@ -141,7 +168,7 @@ const ResultManagement = () => {
 
   const handleDeleteResult = (id: number) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa kết quả này không?")) {
-      deleteResultMutation.mutate(id.toString());
+      deleteResultMutation.mutate(id);
     }
   };
 
@@ -235,13 +262,16 @@ const ResultManagement = () => {
   };
 
   const handleCreateFileUpload = async (file: File) => {
+    console.log("Starting file upload for create form", file);
     setIsCreatingUploading(true);
     try {
       const url = await uploadPdfToCloudinary(file);
+      console.log("File uploaded successfully:", url);
       setUploadedCreateFilePath(url);
       setCreateFormData((prev) => ({ ...prev, filePath: url }));
       alert("Tải lên tệp thành công!");
     } catch (err: any) {
+      console.error("File upload error:", err);
       alert(`Lỗi tải lên tệp: ${err.message}`);
     } finally {
       setIsCreatingUploading(false);
@@ -250,7 +280,12 @@ const ResultManagement = () => {
 
   const handleCreateFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadedCreateFilePath) return;
+    console.log("Form submitted", { createFormData, uploadedCreateFilePath });
+
+    if (!uploadedCreateFilePath) {
+      alert("Vui lòng tải lên file trước khi thêm kết quả!");
+      return;
+    }
 
     try {
       const payload: CreateResultRequest = {
@@ -258,9 +293,10 @@ const ResultManagement = () => {
         filePath: uploadedCreateFilePath,
       };
 
+      console.log("Submitting payload:", payload);
       createResultMutation.mutate(payload);
     } catch (err: any) {
-      alert(`Lỗi tạo kết quả: ${err.message}`);
+      alert(`Lỗi tạo kết quả: ${err.message.result.data}`);
     }
   };
 
@@ -290,13 +326,19 @@ const ResultManagement = () => {
                 Mã kết quả
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Mã mẫu
+                Mã mẫu xét nghiệm
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Ngày kết quả
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Kết luận
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Tên dịch vụ
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Phương pháp lấy mẫu
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Đường dẫn tệp
@@ -325,6 +367,16 @@ const ResultManagement = () => {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
                     {result.conclusion}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">
+                    {result.serviceName}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">
+                    {result.sampleMethodName}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -465,7 +517,7 @@ const ResultManagement = () => {
                   htmlFor="sampleId"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Mã mẫu
+                  Mã mẫu xét nghiệm
                 </label>
                 <input
                   type="number"

@@ -20,7 +20,7 @@ export const updateBlog = async (
 ): Promise<UpdateBlogResponse> => {
   try {
     const response = await httpClient.put({
-      url: `${apiLinks.Blog.update}/${payload.id}`,
+      url: apiLinks.Blog.update,
       data: payload,
     });
 
@@ -34,4 +34,4 @@ export const updateBlog = async (
     console.error("Error updating blog:", error);
     throw error;
   }
-}; 
+};
