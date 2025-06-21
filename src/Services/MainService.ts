@@ -53,4 +53,8 @@ export const apiLinks = {
     getById: (id: string) => `${baseUrl}/Blog/${id}`,
     delete: (id: string) => `${baseUrl}/Blog/${id}`,
   },
+  UserAccount: {
+    getUserProfile: `${baseUrl}/UserAccount/GetUserProfile`,
+    updateUserProfile: `${baseUrl}/UserAccount/UpdateUserProfile`,
+  },
 };

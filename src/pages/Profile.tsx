@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useGetUserProfile } from '../Services/UserAccountService/GetUserProfile';
+import { useUpdateUserProfile } from '../Services/UserAccountService/UpdateUserProfile';
+import type { UpdateUserProfileRequest } from '../Services/UserAccountService/UpdateUserProfile';
 
-interface UserProfile {
-  name: string;
+interface UserProfileData {
+  firstName: string;
+  lastName: string;
   email: string;
-  phone: string;
-  address: string;
+  phoneNumber: string;
+  address: string; // Giả sử có trường địa chỉ, nếu không có bạn có thể bỏ đi
 }
 
 interface TestHistory {
@@ -16,12 +20,28 @@ interface TestHistory {
 }
 
 const Profile = () => {
-  const [profile, setProfile] = useState<UserProfile>({
-    name: 'Nguyễn Văn A',
-    email: 'nguyenvana@example.com',
-    phone: '0123456789',
-    address: '123 Đường ABC, Quận XYZ, TP. HCM'
+  const { data: userProfileResponse, isLoading, error: getUserError } = useGetUserProfile();
+  const { mutate: updateUser, isPending: isUpdating, isSuccess, error: updateError } = useUpdateUserProfile();
+  
+  const [profile, setProfile] = useState<UserProfileData>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
+    address: '' // Khởi tạo rỗng
   });
+
+  useEffect(() => {
+    if (userProfileResponse?.isSuccess && userProfileResponse.result) {
+      setProfile({
+        firstName: userProfileResponse.result.firstName || '',
+        lastName: userProfileResponse.result.lastName || '',
+        email: userProfileResponse.result.email || '',
+        phoneNumber: userProfileResponse.result.phoneNumber || '',
+        address: '' // API của bạn chưa có trường này, tạm để rỗng
+      });
+    }
+  }, [userProfileResponse]);
 
   const [testHistory] = useState<TestHistory[]>([
     {
@@ -41,20 +61,61 @@ const Profile = () => {
 
   const handleProfileUpdate = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement profile update
-    console.log('Profile updated:', profile);
+    const requestData: UpdateUserProfileRequest = {
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      phoneNumber: profile.phoneNumber,
+      imgUrl: userProfileResponse?.result.imgUrl || '', // Giữ lại imgUrl cũ
+    };
+    updateUser(requestData);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (getUserError) {
+    return (
+      <div className="text-center text-red-500 bg-red-100 p-4 rounded-lg">
+        Lỗi khi tải thông tin cá nhân: {getUserError.message}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <h1 className="text-3xl font-bold text-gray-900">Thông tin cá nhân</h1>
 
+      {isSuccess && (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
+          <p className="font-bold">Thành công!</p>
+          <p>Thông tin cá nhân của bạn đã được cập nhật.</p>
+        </div>
+      )}
+
+      {updateError && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+          <p className="font-bold">Thất bại!</p>
+          <p>Không thể cập nhật thông tin: {updateError.message}</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-1">
           <div className="bg-white p-6 rounded-lg shadow-sm">
             <div className="text-center">
-              <div className="w-32 h-32 bg-gray-200 rounded-full mx-auto mb-4"></div>
-              <h2 className="text-xl font-semibold">{profile.name}</h2>
+              <div className="w-32 h-32 bg-gray-200 rounded-full mx-auto mb-4 overflow-hidden">
+                {userProfileResponse?.result.imgUrl ? (
+                  <img src={userProfileResponse.result.imgUrl} alt="User" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-5xl text-gray-400 flex items-center justify-center h-full">?</span>
+                )}
+              </div>
+              <h2 className="text-xl font-semibold">{`${profile.firstName} ${profile.lastName}`}</h2>
               <p className="text-gray-600">{profile.email}</p>
             </div>
           </div>
@@ -62,16 +123,29 @@ const Profile = () => {
 
         <div className="md:col-span-2">
           <form onSubmit={handleProfileUpdate} className="bg-white p-6 rounded-lg shadow-sm space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Họ và tên
-              </label>
-              <input
-                type="text"
-                value={profile.name}
-                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Họ
+                </label>
+                <input
+                  type="text"
+                  value={profile.lastName}
+                  onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên
+                </label>
+                <input
+                  type="text"
+                  value={profile.firstName}
+                  onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                />
+              </div>
             </div>
 
             <div>
@@ -83,6 +157,7 @@ const Profile = () => {
                 value={profile.email}
                 onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
+                disabled // Email thường không được thay đổi
               />
             </div>
 
@@ -92,8 +167,8 @@ const Profile = () => {
               </label>
               <input
                 type="tel"
-                value={profile.phone}
-                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                value={profile.phoneNumber}
+                onChange={(e) => setProfile({ ...profile, phoneNumber: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
               />
             </div>
@@ -112,38 +187,12 @@ const Profile = () => {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+              disabled={isUpdating}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cập nhật thông tin
+              {isUpdating ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
             </button>
           </form>
-        </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-lg shadow-sm">
-        <h2 className="text-xl font-semibold mb-4">Lịch sử xét nghiệm</h2>
-        <div className="space-y-4">
-          {testHistory.map((test) => (
-            <div key={test.id} className="border-b border-gray-200 pb-4 last:border-0">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-medium">{test.testType}</h3>
-                  <p className="text-sm text-gray-600">Mã xét nghiệm: {test.id}</p>
-                  <p className="text-sm text-gray-600">Ngày thực hiện: {test.date}</p>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-sm ${
-                  test.status === 'Hoàn thành' ? 'bg-green-100 text-green-800' :
-                  test.status === 'Đang xử lý' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {test.status}
-                </span>
-              </div>
-              {test.result && (
-                <p className="mt-2 text-sm text-gray-700">{test.result}</p>
-              )}
-            </div>
-          ))}
         </div>
       </div>
     </div>
