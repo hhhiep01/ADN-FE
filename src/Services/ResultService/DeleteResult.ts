@@ -9,16 +9,18 @@ export interface DeleteResultResponse {
 }
 
 export const deleteResult = async (
-  id: string
+  id: number
 ): Promise<DeleteResultResponse> => {
   try {
     const response = await httpClient.delete({
-      url: apiLinks.Result.delete(id),
+      url: apiLinks.Result.delete(id.toString()),
     });
 
     if (response.status !== 200) {
       const errorData = response.data;
-      throw new Error(errorData.errorMessage || "Failed to delete result");
+      throw new Error(
+        errorData.errorMessage || errorData.result || "Failed to delete result"
+      );
     }
 
     return response.data as DeleteResultResponse;

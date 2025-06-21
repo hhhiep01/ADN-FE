@@ -1,28 +1,18 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  getAllResults,
-  type GetAllResultsResponse,
-  type ResultItem,
-} from "../Services/ResultService/GetAllResults";
-
-interface TestResult {
-  id: string;
-  testType: string;
-  date: string;
-  status: "pending" | "completed" | "processing";
-  result?: string;
-  filePath?: string;
-}
+  getUserHistoryResult,
+  type GetUserHistoryResultResponse,
+  type UserHistoryResultItem,
+} from "../Services/ResultService/UserHistoryResult";
 
 const Results = () => {
-  const [searchId, setSearchId] = useState("");
-
-  const { data, isLoading, isError, error } = useQuery<GetAllResultsResponse>({
-    queryKey: ["results", searchId],
-    queryFn: ({ signal }) =>
-      getAllResults({ signal, resultId: searchId || undefined }),
-  });
+  // Không cần searchId vì API user-history không nhận tham số
+  const { data, isLoading, isError, error } =
+    useQuery<GetUserHistoryResultResponse>({
+      queryKey: ["user-history-results"],
+      queryFn: ({ signal }) => getUserHistoryResult(signal),
+    });
 
   const results = data?.result || [];
 
@@ -44,25 +34,26 @@ const Results = () => {
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-gray-900">Kết quả xét nghiệm</h1>
 
-      <div className="flex items-center space-x-4">
-        <input
-          type="text"
-          placeholder="Tìm kiếm theo Mã kết quả..."
-          value={searchId}
-          onChange={(e) => setSearchId(e.target.value)}
-          className="px-4 py-2 border rounded-md w-full max-w-sm"
-        />
-      </div>
-
       <div className="space-y-4">
-        {results.map((r) => (
+        {results.map((r: UserHistoryResultItem) => (
           <div key={r.id} className="bg-white p-4 rounded shadow">
-            <div className="flex justify-between items-start">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
               <div>
                 <h2 className="text-xl font-semibold">Mã kết quả: {r.id}</h2>
-                <p>Mã mẫu: {r.sampleId}</p>
                 <p>
-                  Ngày kết quả: {new Date(r.resultDate).toLocaleDateString()}
+                  <span className="font-medium">Mã mẫu:</span> {r.sampleId}
+                </p>
+                <p>
+                  <span className="font-medium">Ngày kết quả:</span>{" "}
+                  {new Date(r.resultDate).toLocaleDateString()}
+                </p>
+                <p>
+                  <span className="font-medium">Tên dịch vụ:</span>{" "}
+                  {r.serviceName}
+                </p>
+                <p>
+                  <span className="font-medium">Phương pháp lấy mẫu:</span>{" "}
+                  {r.sampleMethodName}
                 </p>
               </div>
             </div>

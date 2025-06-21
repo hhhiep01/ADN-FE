@@ -1,66 +1,44 @@
+import { useQuery } from "@tanstack/react-query";
 import { apiLinks } from "../MainService";
 import httpClient from "../../httpClient/httpClient";
 
-export interface SampleMethod {
+// Interface cho một phương thức thu mẫu (tóm tắt)
+export interface SampleMethodSummary {
   id: number;
   name: string;
 }
 
-export interface ServiceItem {
+// Interface cho một dịch vụ
+export interface Service {
   id: number;
   name: string;
-  description?: string;
+  description: string;
   price: number;
   isActive: boolean;
-  sampleMethods: SampleMethod[];
+  sampleMethods: SampleMethodSummary[];
+  image: string;
 }
 
+// Interface cho toàn bộ response từ API
 export interface GetAllServicesResponse {
   statusCode: number;
   isSuccess: boolean;
   errorMessage: string | null;
-  result: ServiceItem[];
+  result: Service[];
 }
 
-export interface GetAllServicesRequest {
-  signal?: AbortSignal;
-  pageIndex?: number;
-  pageSize?: number;
-  serviceId?: string;
-}
+// Hàm gọi API để lấy tất cả các dịch vụ
+const getAllServices = async (): Promise<GetAllServicesResponse> => {
+  const response = await httpClient.get({
+    url: apiLinks.Service.getAll,
+  });
+  return response.data;
+};
 
-export const getAllServices = async ({
-  signal,
-  pageIndex,
-  pageSize,
-  serviceId,
-}: GetAllServicesRequest): Promise<GetAllServicesResponse> => {
-  try {
-    const params = new URLSearchParams({});
-
-    if (pageIndex !== undefined) {
-      params.append("pageIndex", pageIndex.toString());
-    }
-    if (pageSize !== undefined) {
-      params.append("pageSize", pageSize.toString());
-    }
-    if (serviceId !== undefined) {
-      params.append("serviceId", serviceId);
-    }
-
-    const response = await httpClient.get({
-      url: `${apiLinks.Service.getAll}?${params.toString()}`,
-      signal,
-    });
-
-    if (response.status !== 200) {
-      const errorData = response.data;
-      throw new Error(errorData.errorMessage || "Failed to fetch services");
-    }
-
-    return response.data as GetAllServicesResponse;
-  } catch (error) {
-    console.error("Error fetching services:", error);
-    throw error;
-  }
+// Custom hook để sử dụng trong component
+export const useGetAllServices = () => {
+  return useQuery<GetAllServicesResponse, Error>({
+    queryKey: ["services"],
+    queryFn: getAllServices,
+  });
 }; 

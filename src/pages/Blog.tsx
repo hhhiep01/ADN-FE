@@ -1,33 +1,38 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getAllBlog } from '../Services/BlogService/getAllBlog';
+import type { BlogItem } from '../Services/BlogService/getAllBlog';
 
 const Blog = () => {
-  const posts = [
-    {
-      id: 1,
-      title: 'Xét nghiệm ADN là gì và khi nào cần thực hiện?',
-      excerpt: 'Tìm hiểu về xét nghiệm ADN, các trường hợp cần thực hiện và quy trình thực hiện xét nghiệm.',
-      date: '20/02/2024',
-      category: 'Kiến thức',
-      image: '\swp1.jpg'
-    },
-    {
-      id: 2,
-      title: 'Độ chính xác của xét nghiệm ADN huyết thống',
-      excerpt: 'Phân tích về độ chính xác của các phương pháp xét nghiệm ADN huyết thống hiện nay.',
-      date: '18/02/2024',
-      category: 'Khoa học',
-      image: '\swp2.jpg'
-    },
-    {
-      id: 3,
-      title: 'Quy trình thu mẫu ADN tại nhà',
-      excerpt: 'Hướng dẫn chi tiết về quy trình thu mẫu ADN tại nhà và những lưu ý quan trọng.',
-      date: '15/02/2024',
-      category: 'Hướng dẫn',
-      image: '\swp3.png'
+  const [posts, setPosts] = useState<BlogItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchBlogs() {
+      setLoading(true);
+      try {
+        const response = await getAllBlog({ pageIndex: 1, pageSize: 100 });
+        if (response.isSuccess) {
+          setPosts(response.result || []);
+        } else {
+          setError(response.errorMessage || 'Không thể tải bài viết');
+        }
+      } catch (err) {
+        setError('Lỗi khi tải bài viết');
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
+    fetchBlogs();
+  }, []);
+
+  if (loading) {
+    return <div className="text-center py-12 text-gray-600">Đang tải bài viết...</div>;
+  }
+  if (error) {
+    return <div className="text-center py-12 text-red-600">{error}</div>;
+  }
 
   return (
     <div className="space-y-8">
@@ -48,29 +53,17 @@ const Blog = () => {
             />
             <div className="p-6">
               <div className="flex items-center text-sm text-gray-500 mb-2">
-                <span>{post.date}</span>
-                <span className="mx-2">•</span>
-                <span className="text-blue-600">{post.category}</span>
+                <span>{post.createdDate ? new Date(post.createdDate).toLocaleDateString() : ''}</span>
               </div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
                 {post.title}
               </h2>
               <p className="text-gray-600 mb-4">
-                {post.excerpt}
+                {post.content?.slice(0, 100) || ''}
               </p>
-              {post.id === 1 ? (
-                <Link to="/blog-detail" className="readmore-btn">
-                  Đọc thêm →
-                </Link>
-              ) : post.id === 2 ? (
-                <Link to="/example2" className="readmore-btn">
-                  Đọc thêm →
-                </Link>
-              ) : post.id === 3 ? (
-                <Link to="/example3" className="readmore-btn">
-                  Đọc thêm →
-                </Link>
-              ) : null}
+              <Link to={`/blog-detail/${post.id}`} className="readmore-btn">
+                Đọc thêm →
+              </Link>
             </div>
           </article>
         ))}

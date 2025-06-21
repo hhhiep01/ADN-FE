@@ -13,7 +13,7 @@ export interface UpdateResultResponse {
   statusCode: number;
   isSuccess: boolean;
   errorMessage: string | null;
-  result: { message: string };
+  result: any;
 }
 
 export const updateResult = async (
@@ -27,7 +27,9 @@ export const updateResult = async (
 
     if (response.status !== 200) {
       const errorData = response.data;
-      throw new Error(errorData.errorMessage || "Failed to update result");
+      throw new Error(
+        errorData.errorMessage || errorData.result || "Failed to update result"
+      );
     }
 
     return response.data as UpdateResultResponse;

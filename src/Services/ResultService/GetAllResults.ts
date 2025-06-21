@@ -7,6 +7,8 @@ export interface ResultItem {
   resultDate: string;
   conclusion: string;
   filePath: string;
+  serviceName: string;
+  sampleMethodName: string;
 }
 
 export interface GetAllResultsResponse {

@@ -26,7 +26,9 @@ export const createResult = async (
 
     if (response.status !== 200) {
       const errorData = response.data;
-      throw new Error(errorData.errorMessage || "Failed to create result");
+      throw new Error(
+        errorData.errorMessage || errorData.result || "Failed to create result"
+      );
     }
 
     return response.data as CreateResultResponse;

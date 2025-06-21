@@ -25,7 +25,7 @@ export const apiLinks = {
     getAll: `${baseUrl}/Sample`,
     create: `${baseUrl}/Sample`,
     getById: (id: string) => `${baseUrl}/Sample/${id}`,
-    update: (id: string) => `${baseUrl}/Sample/${id}`,
+    update: `${baseUrl}/Sample`,
     delete: (id: string) => `${baseUrl}/Sample/${id}`,
     getByTestOrderId: (testOrderId: string) =>
       `${baseUrl}/Sample/test-order/${testOrderId}`,
@@ -38,6 +38,20 @@ export const apiLinks = {
     getById: (id: string) => `${baseUrl}/Result/${id}`,
     update: (id: string) => `${baseUrl}/Result/${id}`,
     delete: (id: string) => `${baseUrl}/Result/${id}`,
+    userHistory: `${baseUrl}/Result/user-history`,
+  },
+  SampleMethod: {
+    getAll: `${baseUrl}/SampleMethod`,
+  },
+  Service: {
+    getAll: `${baseUrl}/Service`,
+  },
+  Blog: {
+    getAll: `${baseUrl}/Blog`,
+    create: `${baseUrl}/Blog`,
+    update: `${baseUrl}/Blog`,
+    getById: (id: string) => `${baseUrl}/Blog/${id}`,
+    delete: (id: string) => `${baseUrl}/Blog/${id}`,
   },
 
   Service: {

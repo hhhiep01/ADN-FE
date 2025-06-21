@@ -23,6 +23,9 @@ import CustomerVerifyEmail from "./pages/CustomerVerifyEmail";
 import StaffVerifyEmail from "./pages/StaffVerifyEmail";
 import ServiceManagement from "./pages/ServiceManagement";
 import BlogDetail from "./pages/BlogDetail";
+import BlogManagement from "./pages/BlogManagement";
+
+const queryClient = new QueryClient();
 
 function App() {
   return (
@@ -66,14 +69,14 @@ function App() {
           }
         />
 
-        <Route
-          path="/blog-detail"
-          element={
-            <Layout>
-              <BlogDetail />
-            </Layout>
-          }
-        />
+          <Route
+            path="/blog-detail/:id"
+            element={
+              <Layout>
+                <BlogDetail />
+              </Layout>
+            }
+          />
 
         {/* Customer Routes */}
         <Route
@@ -119,68 +122,60 @@ function App() {
           }
         />
 
-        {/* Staff Routes */}
-        <Route
-          path="/staff/appointments"
-          element={
-            <AdminLayout>
-              <ProtectedRoute allowedRoles={["staff"]}>
-                <AppointmentManagement />
-              </ProtectedRoute>
-            </AdminLayout>
-          }
-        />
-        <Route
-          path="/staff/samples"
-          element={
-            <AdminLayout>
-              <ProtectedRoute allowedRoles={["staff"]}>
-                <SampleManagement />
-              </ProtectedRoute>
-            </AdminLayout>
-          }
-        />
-        <Route
-          path="/staff/results"
-          element={
-            <AdminLayout>
-              <ProtectedRoute allowedRoles={["staff"]}>
-                <ResultManagement />
-              </ProtectedRoute>
-            </AdminLayout>
-          }
-        />
-        <Route
-          path="/staff/services"
-          element={
-            <AdminLayout>
-              <ProtectedRoute allowedRoles={["staff"]}>
-                <ServiceManagement />
-              </ProtectedRoute>
-            </AdminLayout>
-          }
-        />
-        
-        {/* Catch-all route for 404 */}
-        <Route
-          path="*"
-          element={
-            <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-              <div className="text-center">
-                <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-                <p className="text-gray-600 mb-8">Trang không tồn tại</p>
-                <a
-                  href="/"
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Về trang chủ
-                </a>
-              </div>
-            </div>
-          }
-        />
-      </Routes>
-    </Router>
+          {/* Staff Routes */}
+          <Route
+            path="/staff/appointments"
+            element={
+              <AdminLayout>
+                <ProtectedRoute allowedRoles={["staff"]}>
+                  <AppointmentManagement />
+                </ProtectedRoute>
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/staff/samples"
+            element={
+              <AdminLayout>
+                <ProtectedRoute allowedRoles={["staff"]}>
+                  <SampleManagement />
+                </ProtectedRoute>
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/staff/results"
+            element={
+              <AdminLayout>
+                <ProtectedRoute allowedRoles={["staff"]}>
+                  <ResultManagement />
+                </ProtectedRoute>
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/staff/blog"
+            element={
+              <AdminLayout>
+                <ProtectedRoute allowedRoles={["staff"]}>
+                  <Blog />
+                </ProtectedRoute>
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/staff/blog-management"
+            element={
+              <AdminLayout>
+                <ProtectedRoute allowedRoles={["staff"]}>
+                  <BlogManagement />
+                </ProtectedRoute>
+              </AdminLayout>
+            }
+          />
+        </Routes>
+      </Router>
+    </QueryClientProvider>
   );
 }
 
