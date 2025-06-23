@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -14,12 +14,6 @@ import { useGetAllServices, type Service } from "../Services/ServiceService/GetA
 const Services = () => {
   const { data, isLoading, isError, error } = useGetAllServices();
   const services: Service[] = data?.result || [];
-
-  const [startIndex, setStartIndex] = useState(0);
-  const servicesPerPage = 3;
-  const canPrev = startIndex > 0;
-  const canNext = startIndex + servicesPerPage < services.length;
-  const visibleServices = services.slice(startIndex, startIndex + servicesPerPage);
 
   const testimonials = [
     {
@@ -121,85 +115,51 @@ const Services = () => {
           </motion.p>
         </div>
 
-        {/* Services Grid with Carousel */}
-        <div className="relative mb-20">
-          {/* Left Button */}
-          <button
-            type="button"
-            aria-label="Trước"
-            onClick={() => setStartIndex((prev) => Math.max(0, prev - servicesPerPage))}
-            disabled={!canPrev}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-blue-300 shadow rounded-full w-12 h-12 flex items-center justify-center hover:bg-blue-100 transition disabled:opacity-30"
-            style={{transform: 'translateY(-50%)'}}
-          >
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
-
-          {/* Services Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
-            {visibleServices.map((service) => (
-              <motion.div
-                key={service.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-                whileHover={{ 
-                  scale: 1.05,
-                  y: -10,
-                  transition: {
-                    duration: 0.2,
-                    ease: "easeOut"
-                  }
-                }}
-                className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-2xl flex flex-col h-full"
-              >
-                <div className="aspect-w-16 aspect-h-9 overflow-hidden">
-                  <img 
-                    src={service.image || "/images/adn-test1.jpg"} 
-                    alt={service.name}
-                    className="w-full h-56 object-cover transition-transform duration-300 hover:scale-110"
-                    onError={(e) => {
-                      e.currentTarget.src = 'https://via.placeholder.com/400x300?text=DNA+Testing';
-                    }}
-                  />
+        {/* Services Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 mb-20">
+          {services.map((service) => (
+            <motion.div
+              key={service.id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              whileHover={{ 
+                scale: 1.05,
+                y: -10,
+                transition: {
+                  duration: 0.2,
+                  ease: "easeOut"
+                }
+              }}
+              className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-2xl"
+            >
+              <div className="aspect-w-16 aspect-h-9 overflow-hidden">
+                <img 
+                  src={service.image || "/images/adn-test1.jpg"} 
+                  alt={service.name}
+                  className="w-full h-56 object-cover transition-transform duration-300 hover:scale-110"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://via.placeholder.com/400x300?text=DNA+Testing';
+                  }}
+                />
+              </div>
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 transition-colors duration-300 group-hover:text-blue-600">{service.name}</h2>
                 </div>
-                <div className="p-8 flex flex-col flex-grow">
-                  <div className="flex items-center justify-between mb-6 min-h-[56px]">
-                    <h2 className="text-2xl font-bold text-gray-900 transition-colors duration-300 group-hover:text-blue-600 break-words">
-                      {service.name}
-                    </h2>
-                  </div>
-                  <p className="text-gray-600 mb-8 leading-relaxed min-h-[72px] overflow-hidden text-ellipsis line-clamp-3">
-                    {service.description}
-                  </p>
-                  <div className="mb-8 min-h-[40px] flex items-end">
-                    <span className="text-3xl font-bold text-blue-600">{service.price?.toLocaleString()} đ</span>
-                  </div>
-                  <div className="mt-auto">
-                    <Link
-                      to="/appointment"
-                      className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-orange-500 to-blue-600 text-white py-4 px-6 rounded-full font-bold text-lg uppercase shadow-lg hover:from-blue-600 hover:to-orange-500 hover:scale-105 transition-all duration-300"
-                    >
-                      <FontAwesomeIcon icon={faCalendarCheck} className="text-xl" />
-                      Đặt lịch ngay
-                    </Link>
-                  </div>
+                <p className="text-gray-600 mb-8 leading-relaxed">{service.description}</p>
+                <div className="mb-8">
+                  <span className="text-3xl font-bold text-blue-600">{service.price?.toLocaleString()} đ</span>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Right Button */}
-          <button
-            type="button"
-            aria-label="Sau"
-            onClick={() => setStartIndex((prev) => Math.min(services.length - servicesPerPage, prev + servicesPerPage))}
-            disabled={!canNext}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-blue-300 shadow rounded-full w-12 h-12 flex items-center justify-center hover:bg-blue-100 transition disabled:opacity-30"
-            style={{transform: 'translateY(-50%)'}}
-          >
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
+                <Link
+                  to="/appointment"
+                  className="block w-full text-center bg-blue-600 text-white py-4 px-6 rounded-lg hover:bg-blue-700 transition-all duration-300 text-lg hover:shadow-lg transform hover:-translate-y-1"
+                >
+                  Đặt lịch ngay
+                </Link>
+              </div>
+            </motion.div>
+          ))}
         </div>
 
         {/* Process Section */}
