@@ -13,6 +13,7 @@ export interface UpdateServiceRequest {
   price: number;
   isActive: boolean;
   sampleMethodIds: number[];
+  image: string;
 }
 
 export const updateService = async (request: UpdateServiceRequest): Promise<void> => {

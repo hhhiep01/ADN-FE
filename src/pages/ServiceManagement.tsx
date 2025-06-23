@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 // Import types từ GetAllServices
 import {
-  getAllServices,
+  useGetAllServices,
   type GetAllServicesResponse,
-  type ServiceItem,
+  type Service,
 } from "../Services/ServiceService/GetAllServices";
 import { deleteService } from "../Services/ServiceService/DeleteService";
 import {
@@ -25,7 +25,7 @@ const ServiceManagement = () => {
   const queryClient = useQueryClient();
 
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedService, setSelectedService] = useState<ServiceItem | null>(
+  const [selectedService, setSelectedService] = useState<Service | null>(
     null
   );
   const [updateFormData, setUpdateFormData] = useState<
@@ -36,6 +36,7 @@ const ServiceManagement = () => {
     price: 0,
     isActive: true,
     sampleMethodIds: [],
+    image: "",
   });
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -45,15 +46,45 @@ const ServiceManagement = () => {
     price: 0,
     isActive: true,
     sampleMethodIds: [],
+    image: "",
   });
 
-  const { data, isLoading, isError, error } =
-    useQuery<GetAllServicesResponse>({
-      queryKey: ["services"],
-      queryFn: ({ signal }) => getAllServices({ signal }),
-      retry: 1,
-      retryDelay: 1000,
-    });
+  // States for image upload (create)
+  const [selectedCreateImage, setSelectedCreateImage] = useState<File | null>(
+    null
+  );
+  const [isCreatingImageUploading, setIsCreatingImageUploading] =
+    useState(false);
+  const [uploadedCreateImageUrl, setUploadedCreateImageUrl] =
+    useState<string>("");
+
+  // States for image upload (edit)
+  const [selectedEditImage, setSelectedEditImage] = useState<File | null>(null);
+  const [isEditingImageUploading, setIsEditingImageUploading] = useState(false);
+  const [uploadedEditImageUrl, setUploadedEditImageUrl] = useState<string>("");
+
+  const uploadImageToCloudinary = async (file: File): Promise<string> => {
+    const CLOUDINARY_CLOUD_NAME = "dku0qdaan";
+    const CLOUDINARY_UPLOAD_PRESET = "ADN_SWP";
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error.message || "Cloudinary upload failed");
+    }
+    const data = await response.json();
+    return data.secure_url;
+  };
+
+  const { data, isLoading, isError, error } = useGetAllServices();
 
   const { data: sampleMethodsData } = useQuery<GetAllSampleMethodsResponse>({
     queryKey: ["sampleMethods"],
@@ -95,7 +126,10 @@ const ServiceManagement = () => {
         price: 0,
         isActive: true,
         sampleMethodIds: [],
+        image: "",
       });
+      setSelectedCreateImage(null);
+      setUploadedCreateImageUrl("");
       alert("Thêm dịch vụ mới thành công!");
     },
     onError: (err: any) => {
@@ -143,7 +177,7 @@ const ServiceManagement = () => {
     }
   };
 
-  const handleUpdateClick = (service: ServiceItem) => {
+  const handleUpdateClick = (service: Service) => {
     setSelectedService(service);
     setUpdateFormData({
       name: service.name,
@@ -151,7 +185,10 @@ const ServiceManagement = () => {
       price: service.price,
       isActive: service.isActive,
       sampleMethodIds: service.sampleMethods.map((sm) => sm.id) || [],
+      image: service.image || "",
     });
+    setSelectedEditImage(null);
+    setUploadedEditImageUrl("");
     setShowUpdateModal(true);
   };
 
@@ -180,6 +217,7 @@ const ServiceManagement = () => {
     const payload: UpdateServiceRequest = {
       id: selectedService.id,
       ...updateFormData,
+      image: uploadedEditImageUrl || updateFormData.image,
     };
     updateServiceMutation.mutate(payload);
   };
@@ -191,7 +229,10 @@ const ServiceManagement = () => {
       price: 0,
       isActive: true,
       sampleMethodIds: [],
+      image: "",
     });
+    setSelectedCreateImage(null);
+    setUploadedCreateImageUrl("");
     setShowCreateModal(true);
   };
 
@@ -215,7 +256,10 @@ const ServiceManagement = () => {
 
   const handleCreateFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createServiceMutation.mutate(createFormData);
+    createServiceMutation.mutate({
+      ...createFormData,
+      image: uploadedCreateImageUrl,
+    });
   };
 
   return (
@@ -264,7 +308,7 @@ const ServiceManagement = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {services.map((service: ServiceItem) => (
+            {services.map((service: Service) => (
               <tr key={service.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">
@@ -289,7 +333,7 @@ const ServiceManagement = () => {
                     {service.sampleMethods &&
                     service.sampleMethods.length > 0 ? (
                       <div className="space-y-1">
-                        {service.sampleMethods.map((method, index) => (
+                        {service.sampleMethods.map((method) => (
                           <span
                             key={method.id}
                             className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1 mb-1"
@@ -444,6 +488,55 @@ const ServiceManagement = () => {
                   </select>
                 )}
               </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="image"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Ảnh
+                </label>
+                <input
+                  type="file"
+                  id="image"
+                  accept="image/*"
+                  onChange={(e) =>
+                    setSelectedEditImage(
+                      e.target.files ? e.target.files[0] : null
+                    )
+                  }
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+                {(uploadedEditImageUrl || updateFormData.image) && (
+                  <img
+                    src={uploadedEditImageUrl || updateFormData.image}
+                    alt="Preview"
+                    className="mt-2 w-32 h-20 object-cover rounded"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (selectedEditImage) {
+                      setIsEditingImageUploading(true);
+                      try {
+                        const url = await uploadImageToCloudinary(
+                          selectedEditImage
+                        );
+                        setUploadedEditImageUrl(url);
+                        alert("Tải lên ảnh thành công!");
+                      } catch (err: any) {
+                        alert(`Lỗi tải lên ảnh: ${err.message}`);
+                      } finally {
+                        setIsEditingImageUploading(false);
+                      }
+                    }
+                  }}
+                  disabled={!selectedEditImage || isEditingImageUploading}
+                  className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {isEditingImageUploading ? "Đang tải..." : "Tải lên ảnh"}
+                </button>
+              </div>
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
@@ -573,6 +666,55 @@ const ServiceManagement = () => {
                     )}
                   </select>
                 )}
+              </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="createImage"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Ảnh
+                </label>
+                <input
+                  type="file"
+                  id="createImage"
+                  accept="image/*"
+                  onChange={(e) =>
+                    setSelectedCreateImage(
+                      e.target.files ? e.target.files[0] : null
+                    )
+                  }
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+                {uploadedCreateImageUrl && (
+                  <img
+                    src={uploadedCreateImageUrl}
+                    alt="Preview"
+                    className="mt-2 w-32 h-20 object-cover rounded"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (selectedCreateImage) {
+                      setIsCreatingImageUploading(true);
+                      try {
+                        const url = await uploadImageToCloudinary(
+                          selectedCreateImage
+                        );
+                        setUploadedCreateImageUrl(url);
+                        alert("Tải lên ảnh thành công!");
+                      } catch (err: any) {
+                        alert(`Lỗi tải lên ảnh: ${err.message}`);
+                      } finally {
+                        setIsCreatingImageUploading(false);
+                      }
+                    }
+                  }}
+                  disabled={!selectedCreateImage || isCreatingImageUploading}
+                  className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {isCreatingImageUploading ? "Đang tải..." : "Tải lên ảnh"}
+                </button>
               </div>
               <div className="flex justify-end space-x-3">
                 <button

@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-const baseUrl = "https://9a58-118-69-182-144.ngrok-free.app/api";
+const baseUrl = "https://56f8-116-109-105-113.ngrok-free.app/api";
 
 export const queryClient = new QueryClient();
 
@@ -39,12 +39,6 @@ export const apiLinks = {
     update: (id: string) => `${baseUrl}/Result/${id}`,
     delete: (id: string) => `${baseUrl}/Result/${id}`,
     userHistory: `${baseUrl}/Result/user-history`,
-  },
-  SampleMethod: {
-    getAll: `${baseUrl}/SampleMethod`,
-  },
-  Service: {
-    getAll: `${baseUrl}/Service`,
   },
   Blog: {
     getAll: `${baseUrl}/Blog`,

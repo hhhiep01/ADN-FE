@@ -12,6 +12,7 @@ export interface CreateServiceRequest {
   price: number;
   isActive: boolean;
   sampleMethodIds: number[];
+  image: string;
 }
 
 export const createService = async (request: CreateServiceRequest): Promise<void> => {

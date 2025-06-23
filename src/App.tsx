@@ -24,50 +24,52 @@ import StaffVerifyEmail from "./pages/StaffVerifyEmail";
 import ServiceManagement from "./pages/ServiceManagement";
 import BlogDetail from "./pages/BlogDetail";
 import BlogManagement from "./pages/BlogManagement";
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 
 const queryClient = new QueryClient();
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/customer/login" element={<CustomerLogin />} />
-        <Route path="/customer/register" element={<CustomerRegister />} />
-        <Route
-          path="/customer/verify-email"
-          element={<CustomerVerifyEmail />}
-        />
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/staff/login" element={<StaffLogin />} />
-        <Route path="/staff/register" element={<StaffRegister />} />
-        <Route path="/staff/verify-email" element={<StaffVerifyEmail />} />
-        <Route path="/admin/register" element={<AdminRegister />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route
-          path="/"
-          element={
-            <Layout>
-              <Home />
-            </Layout>
-          }
-        />
-        <Route
-          path="/services"
-          element={
-            <Layout>
-              <Services />
-            </Layout>
-          }
-        />
-        <Route
-          path="/blog"
-          element={
-            <Layout>
-              <Blog />
-            </Layout>
-          }
-        />
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/customer/login" element={<CustomerLogin />} />
+          <Route path="/customer/register" element={<CustomerRegister />} />
+          <Route
+            path="/customer/verify-email"
+            element={<CustomerVerifyEmail />}
+          />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/staff/login" element={<StaffLogin />} />
+          <Route path="/staff/register" element={<StaffRegister />} />
+          <Route path="/staff/verify-email" element={<StaffVerifyEmail />} />
+          <Route path="/admin/register" element={<AdminRegister />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route
+            path="/"
+            element={
+              <Layout>
+                <Home />
+              </Layout>
+            }
+          />
+          <Route
+            path="/services"
+            element={
+              <Layout>
+                <Services />
+              </Layout>
+            }
+          />
+          <Route
+            path="/blog"
+            element={
+              <Layout>
+                <Blog />
+              </Layout>
+            }
+          />
 
           <Route
             path="/blog-detail/:id"
@@ -78,49 +80,49 @@ function App() {
             }
           />
 
-        {/* Customer Routes */}
-        <Route
-          path="/appointment"
-          element={
-            <Layout>
-              <ProtectedRoute allowedRoles={["customer"]}>
-                <Appointment />
-              </ProtectedRoute>
-            </Layout>
-          }
-        />
-        <Route
-          path="/results"
-          element={
-            <Layout>
-              <ProtectedRoute allowedRoles={["customer"]}>
-                <Results />
-              </ProtectedRoute>
-            </Layout>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <Layout>
-              <ProtectedRoute allowedRoles={["customer"]}>
-                <Profile />
-              </ProtectedRoute>
-            </Layout>
-          }
-        />
+          {/* Customer Routes */}
+          <Route
+            path="/appointment"
+            element={
+              <Layout>
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <Appointment />
+                </ProtectedRoute>
+              </Layout>
+            }
+          />
+          <Route
+            path="/results"
+            element={
+              <Layout>
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <Results />
+                </ProtectedRoute>
+              </Layout>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <Layout>
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <Profile />
+                </ProtectedRoute>
+              </Layout>
+            }
+          />
 
-        {/* Admin Routes */}
-        <Route
-          path="/admin/users"
-          element={
-            <AdminLayout>
-              <ProtectedRoute allowedRoles={["admin"]}>
-                <UserManagement />
-              </ProtectedRoute>
-            </AdminLayout>
-          }
-        />
+          {/* Admin Routes */}
+          <Route
+            path="/admin/users"
+            element={
+              <AdminLayout>
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <UserManagement />
+                </ProtectedRoute>
+              </AdminLayout>
+            }
+          />
 
           {/* Staff Routes */}
           <Route
@@ -169,6 +171,16 @@ function App() {
               <AdminLayout>
                 <ProtectedRoute allowedRoles={["staff"]}>
                   <BlogManagement />
+                </ProtectedRoute>
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/staff/services"
+            element={
+              <AdminLayout>
+                <ProtectedRoute allowedRoles={["staff"]}>
+                  <ServiceManagement />
                 </ProtectedRoute>
               </AdminLayout>
             }

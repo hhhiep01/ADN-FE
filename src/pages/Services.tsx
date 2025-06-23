@@ -9,52 +9,11 @@ import {
   faFileAlt,
   faUserCircle
 } from '@fortawesome/free-solid-svg-icons';
+import { useGetAllServices, type Service } from "../Services/ServiceService/GetAllServices";
 
 const Services = () => {
-  const services = [
-    {
-      id: 1,
-      title: 'Xét nghiệm ADN cha con',
-      description: 'Xác định mối quan hệ huyết thống giữa cha và con với độ chính xác 99.99%',
-      price: '3.500.000 VNĐ',
-      duration: '3-5 ngày',
-      image: '/images/adn-test1.jpg',
-      features: [
-        'Kết quả chính xác 99.99%',
-        'Bảo mật thông tin tuyệt đối',
-        'Hỗ trợ tư vấn 24/7',
-        'Nhận kết quả online'
-      ]
-    },
-    {
-      id: 2,
-      title: 'Xét nghiệm ADN huyết thống',
-      description: 'Xác định mối quan hệ huyết thống giữa các thành viên trong gia đình',
-      price: '4.500.000 VNĐ',
-      duration: '3-5 ngày',
-      image: '/images/adn-test2.jpg',
-      features: [
-        'Xác định quan hệ huyết thống',
-        'Kết quả được chấp nhận pháp lý',
-        'Tư vấn chuyên sâu',
-        'Bảo mật thông tin'
-      ]
-    },
-    {
-      id: 3,
-      title: 'Xét nghiệm ADN hành chính',
-      description: 'Xét nghiệm ADN được chấp nhận bởi các cơ quan nhà nước cho các thủ tục pháp lý',
-      price: '5.500.000 VNĐ',
-      duration: '3-5 ngày',
-      image: '/images/adn-test3.jpg',
-      features: [
-        'Được chấp nhận pháp lý',
-        'Hỗ trợ thủ tục hành chính',
-        'Tư vấn pháp lý',
-        'Bảo mật thông tin'
-      ]
-    }
-  ];
+  const { data, isLoading, isError, error } = useGetAllServices();
+  const services: Service[] = data?.result || [];
 
   const testimonials = [
     {
@@ -115,6 +74,9 @@ const Services = () => {
     }
   ];
 
+  if (isLoading) return <div className="text-center py-20">Đang tải dịch vụ...</div>;
+  if (isError) return <div className="text-center py-20 text-red-500">Lỗi: {error?.message || "Không thể tải dịch vụ"}</div>;
+
   return (
     <div className="space-y-20">
       {/* Hero Banner */}
@@ -173,8 +135,8 @@ const Services = () => {
             >
               <div className="aspect-w-16 aspect-h-9 overflow-hidden">
                 <img 
-                  src={service.image} 
-                  alt={service.title}
+                  src={service.image || "/images/adn-test1.jpg"} 
+                  alt={service.name}
                   className="w-full h-56 object-cover transition-transform duration-300 hover:scale-110"
                   onError={(e) => {
                     e.currentTarget.src = 'https://via.placeholder.com/400x300?text=DNA+Testing';
@@ -183,25 +145,12 @@ const Services = () => {
               </div>
               <div className="p-8">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 transition-colors duration-300 group-hover:text-blue-600">{service.title}</h2>
-                  <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                    {service.duration}
-                  </span>
+                  <h2 className="text-2xl font-bold text-gray-900 transition-colors duration-300 group-hover:text-blue-600">{service.name}</h2>
                 </div>
                 <p className="text-gray-600 mb-8 leading-relaxed">{service.description}</p>
                 <div className="mb-8">
-                  <span className="text-3xl font-bold text-blue-600">{service.price}</span>
+                  <span className="text-3xl font-bold text-blue-600">{service.price?.toLocaleString()} đ</span>
                 </div>
-                <ul className="space-y-4 mb-8">
-                  {service.features.map((feature, index) => (
-                    <li key={index} className="flex items-center text-gray-600">
-                      <svg className="w-6 h-6 mr-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
                 <Link
                   to="/appointment"
                   className="block w-full text-center bg-blue-600 text-white py-4 px-6 rounded-lg hover:bg-blue-700 transition-all duration-300 text-lg hover:shadow-lg transform hover:-translate-y-1"
