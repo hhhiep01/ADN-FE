@@ -8,7 +8,7 @@ interface UserProfileData {
   lastName: string;
   email: string;
   phoneNumber: string;
-  address: string; // Giả sử có trường địa chỉ, nếu không có bạn có thể bỏ đi
+  address: string;
 }
 
 interface TestHistory {
@@ -33,7 +33,7 @@ const Profile = () => {
     lastName: '',
     email: '',
     phoneNumber: '',
-    address: '' // Khởi tạo rỗng
+    address: ''
   });
 
   useEffect(() => {
@@ -43,12 +43,12 @@ const Profile = () => {
         lastName: userProfileResponse.result.lastName || '',
         email: userProfileResponse.result.email || '',
         phoneNumber: userProfileResponse.result.phoneNumber || '',
-        address: '' // API của bạn chưa có trường này, tạm để rỗng
+        address: ''
       });
     }
   }, [userProfileResponse]);
 
-  const [testHistory] = useState<TestHistory[]>([
+  const testHistory: TestHistory[] = [
     {
       id: 'ADN-2024-001',
       testType: 'Xét nghiệm ADN Cha - Con',
@@ -71,7 +71,7 @@ const Profile = () => {
       date: '2024-02-21',
       status: 'Đang xử lý'
     }
-  ]);
+  ];
 
   const handleProfileUpdate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +79,7 @@ const Profile = () => {
       firstName: profile.firstName,
       lastName: profile.lastName,
       phoneNumber: profile.phoneNumber,
-      imgUrl: userProfileResponse?.result.imgUrl || '', // Giữ lại imgUrl cũ
+      imgUrl: userProfileResponse?.result.imgUrl || '',
     };
     updateUser(requestData);
   };
@@ -133,6 +133,7 @@ const Profile = () => {
               <p className="text-gray-600">{profile.email}</p>
             </div>
           </div>
+        </div>
 
         <div className="md:col-span-2">
           <form onSubmit={handleProfileUpdate} className="bg-white p-6 rounded-lg shadow-sm space-y-6">
@@ -170,7 +171,7 @@ const Profile = () => {
                 value={profile.email}
                 onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
-                disabled // Email thường không được thay đổi
+                disabled
               />
             </div>
 
@@ -186,17 +187,17 @@ const Profile = () => {
               />
             </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Địa chỉ
-                </label>
-                <input
-                  type="text"
-                  value={profile.address}
-                  onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Địa chỉ
+              </label>
+              <input
+                type="text"
+                value={profile.address}
+                onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              />
+            </div>
 
             <button
               type="submit"
@@ -206,6 +207,57 @@ const Profile = () => {
               {isUpdating ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
             </button>
           </form>
+        </div>
+      </div>
+
+      {/* Test History Section */}
+      <div className="bg-white p-6 rounded-lg shadow-sm">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Lịch sử xét nghiệm</h2>
+        <div className="space-y-4">
+          {testHistory.map((test) => (
+            <div key={test.id} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className="font-semibold text-gray-900">{test.testType}</h3>
+                  <p className="text-sm text-gray-600">ID: {test.id}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">{test.date}</p>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                    test.status === 'Hoàn thành' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {test.status}
+                  </span>
+                </div>
+              </div>
+              {test.result && (
+                <p className="text-sm text-gray-700 mb-2">{test.result}</p>
+              )}
+              {test.details && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <p className="text-sm text-gray-600 mb-1">
+                    <span className="font-medium">Độ chính xác:</span> {test.details.accuracy}
+                  </p>
+                  <p className="text-sm text-gray-600 mb-2">
+                    <span className="font-medium">Kết luận:</span> {test.details.conclusion}
+                  </p>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 mb-1">Khuyến nghị:</p>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      {test.details.recommendations.map((rec, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="text-blue-500 mr-2">•</span>
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </div>

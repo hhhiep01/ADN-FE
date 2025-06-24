@@ -465,27 +465,29 @@ const ServiceManagement = () => {
                   Phương thức lấy mẫu
                 </label>
                 {sampleMethodsData?.result && (
-                  <select
-                    multiple
-                    value={updateFormData.sampleMethodIds.map(String)}
-                    onChange={(e) =>
-                      handleUpdateSampleMethodChange(
-                        Array.from(
-                          e.target.selectedOptions,
-                          (option) => Number(option.value)
-                        )
-                      )
-                    }
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  >
-                    {sampleMethodsData.result.map(
-                      (method: SampleMethodItem) => (
-                        <option key={method.id} value={method.id}>
-                          {method.name}
-                        </option>
-                      )
-                    )}
-                  </select>
+                  <div className="flex flex-wrap gap-4">
+                    {sampleMethodsData.result.map((method: SampleMethodItem) => (
+                      <label key={method.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={updateFormData.sampleMethodIds.includes(method.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              handleUpdateSampleMethodChange([
+                                ...updateFormData.sampleMethodIds,
+                                method.id,
+                              ]);
+                            } else {
+                              handleUpdateSampleMethodChange(
+                                updateFormData.sampleMethodIds.filter((id) => id !== method.id)
+                              );
+                            }
+                          }}
+                        />
+                        <span>{method.name}</span>
+                      </label>
+                    ))}
+                  </div>
                 )}
               </div>
               <div className="mb-4">
@@ -560,7 +562,7 @@ const ServiceManagement = () => {
 
       {/* Create Service Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-aHủy h-full w-full flex justify-center items-center">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center">
           <div className="bg-white p-8 rounded-lg shadow-xl w-1/3">
             <h3 className="text-lg font-semibold mb-4">Thêm dịch vụ mới</h3>
             <form onSubmit={handleCreateFormSubmit}>
@@ -644,27 +646,29 @@ const ServiceManagement = () => {
                   Phương thức lấy mẫu
                 </label>
                 {sampleMethodsData?.result && (
-                  <select
-                    multiple
-                    value={createFormData.sampleMethodIds.map(String)}
-                    onChange={(e) =>
-                      handleCreateSampleMethodChange(
-                        Array.from(
-                          e.target.selectedOptions,
-                          (option) => Number(option.value)
-                        )
-                      )
-                    }
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  >
-                    {sampleMethodsData.result.map(
-                      (method: SampleMethodItem) => (
-                        <option key={method.id} value={method.id}>
-                          {method.name}
-                        </option>
-                      )
-                    )}
-                  </select>
+                  <div className="flex flex-wrap gap-4">
+                    {sampleMethodsData.result.map((method: SampleMethodItem) => (
+                      <label key={method.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={createFormData.sampleMethodIds.includes(method.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              handleCreateSampleMethodChange([
+                                ...createFormData.sampleMethodIds,
+                                method.id,
+                              ]);
+                            } else {
+                              handleCreateSampleMethodChange(
+                                createFormData.sampleMethodIds.filter((id) => id !== method.id)
+                              );
+                            }
+                          }}
+                        />
+                        <span>{method.name}</span>
+                      </label>
+                    ))}
+                  </div>
                 )}
               </div>
               <div className="mb-4">

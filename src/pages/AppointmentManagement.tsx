@@ -10,6 +10,7 @@ import {
   updateTestOrder,
   type UpdateTestOrderRequest,
 } from "../Services/TestOrderService/UpdateTestOrder";
+import { useDeleteTestOrder } from "../Services/TestOrderService/DeleteTestOrder";
 
 const sampleCollectionMethods = [
   {
@@ -46,6 +47,10 @@ const AppointmentManagement = () => {
     appointmentDate: "",
     appointmentLocation: "",
   });
+
+  // Delete confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [testOrderToDelete, setTestOrderToDelete] = useState<TestOrderItem | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -101,6 +106,8 @@ const AppointmentManagement = () => {
       alert(`Lỗi cập nhật đơn hẹn: ${err.message}`);
     },
   });
+
+  const deleteTestOrderMutation = useDeleteTestOrder();
 
   const appointments = data?.result?.items || [];
   const totalItems = data?.result?.total || 0;
@@ -189,6 +196,31 @@ const AppointmentManagement = () => {
 
   const handleUpdateTestOrder = () => {
     updateTestOrderMutation.mutate(editFormData);
+  };
+
+  const handleDelete = (testOrder: TestOrderItem) => {
+    setTestOrderToDelete(testOrder);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (testOrderToDelete) {
+      deleteTestOrderMutation.mutate(testOrderToDelete.id, {
+        onSuccess: () => {
+          setIsDeleteModalOpen(false);
+          setTestOrderToDelete(null);
+          alert("Xóa đơn hẹn thành công!");
+        },
+        onError: (err) => {
+          alert(`Lỗi xóa đơn hẹn: ${err.message}`);
+        },
+      });
+    }
+  };
+
+  const cancelDelete = () => {
+    setIsDeleteModalOpen(false);
+    setTestOrderToDelete(null);
   };
 
   const filteredAppointments = appointments;
@@ -415,8 +447,12 @@ const AppointmentManagement = () => {
                   >
                     Chỉnh sửa
                   </button>
-                  <button className="text-red-600 hover:text-red-900">
-                    Hủy
+                  <button 
+                    className="text-red-600 hover:text-red-900"
+                    onClick={() => handleDelete(appointment)}
+                    disabled={deleteTestOrderMutation.isPending}
+                  >
+                    {deleteTestOrderMutation.isPending ? 'Đang xóa...' : 'Hủy'}
                   </button>
                 </td>
               </tr>
@@ -568,6 +604,39 @@ const AppointmentManagement = () => {
                 {updateTestOrderMutation.isPending
                   ? "Đang cập nhật..."
                   : "Cập nhật"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && testOrderToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-xl font-semibold mb-4 text-red-600">Xác nhận xóa</h3>
+            <p className="text-gray-700 mb-6">
+              Bạn có chắc chắn muốn xóa đơn hẹn của khách hàng{" "}
+              <span className="font-semibold">{testOrderToDelete.fullName}</span>?
+              <br />
+              <span className="text-sm text-gray-500">
+                (Mã đơn hẹn: {testOrderToDelete.id})
+              </span>
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelDelete}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                disabled={deleteTestOrderMutation.isPending}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleteTestOrderMutation.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleteTestOrderMutation.isPending ? "Đang xóa..." : "Xóa"}
               </button>
             </div>
           </div>
