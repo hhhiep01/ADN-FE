@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-const baseUrl = "https://localhost:7046/api";
+const baseUrl = "https://7520-116-109-105-113.ngrok-free.app/api";
 
 export const queryClient = new QueryClient();
 
@@ -59,11 +59,10 @@ export const apiLinks = {
   SampleMethod: {
     getAll: `${baseUrl}/SampleMethod`,
   },
-   UserAccount: {
+  UserAccount: {
     getUserProfile: `${baseUrl}/UserAccount/GetUserProfile`,
     updateUserProfile: `${baseUrl}/UserAccount/UpdateUserProfile`,
   },
 };
 
 export default apiLinks;
- 

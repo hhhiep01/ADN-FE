@@ -1,8 +1,18 @@
-import React, { useState } from 'react';
-import { FaUser, FaEnvelope, FaPhone, FaFlask, FaArrowRight, FaNotesMedical } from 'react-icons/fa';
-import { useCreateTestOrder, type CreateTestOrderRequest } from '../Services/TestOrderService/CreateTestOrder';
-import { useGetAllSampleMethods } from '../Services/SampleMethodService/GetAllSampleMethods';
-import { useGetAllServices } from '../Services/ServiceService/GetAllServices';
+import React, { useState } from "react";
+import {
+  FaUser,
+  FaEnvelope,
+  FaPhone,
+  FaFlask,
+  FaArrowRight,
+  FaNotesMedical,
+} from "react-icons/fa";
+import {
+  useCreateTestOrder,
+  type CreateTestOrderRequest,
+} from "../Services/TestOrderService/CreateTestOrder";
+import { useGetAllSampleMethods } from "../Services/SampleMethodService/GetAllSampleMethods";
+import { useGetAllServices } from "../Services/ServiceService/GetAllServices";
 
 interface DuLieuDatLich {
   hoTen: string;
@@ -10,75 +20,80 @@ interface DuLieuDatLich {
   soDienThoai: string;
   phuongThucThuMauId: string;
   loaiXetNghiemId: string;
-  ghiChu?: string;
+  appointmentDate: string;
+  appointmentLocation: string;
 }
 
 const Appointment = () => {
-  const [thongBaoLoi, setThongBaoLoi] = useState<string>('');
-  const [thongBaoThanhCong, setThongBaoThanhCong] = useState<string>('');
+  const [thongBaoLoi, setThongBaoLoi] = useState<string>("");
+  const [thongBaoThanhCong, setThongBaoThanhCong] = useState<string>("");
 
   const [formData, setFormData] = useState<DuLieuDatLich>({
-    hoTen: '',
-    email: '',
-    soDienThoai: '',
-    phuongThucThuMauId: '',
-    loaiXetNghiemId: '',
-    ghiChu: '',
+    hoTen: "",
+    email: "",
+    soDienThoai: "",
+    phuongThucThuMauId: "",
+    loaiXetNghiemId: "",
+    appointmentDate: "",
+    appointmentLocation: "",
   });
 
   // Lấy danh sách phương thức thu mẫu
-  const { 
-    data: sampleMethodsResponse, 
+  const {
+    data: sampleMethodsResponse,
     isLoading: dangTaiPhuongThuc,
-    error: loiPhuongThuc 
+    error: loiPhuongThuc,
   } = useGetAllSampleMethods();
   const danhSachPhuongThuc = sampleMethodsResponse?.result;
 
   // Lấy danh sách loại xét nghiệm
-  const { 
-    data: servicesResponse, 
+  const {
+    data: servicesResponse,
     isLoading: dangTaiXetNghiem,
-    error: loiXetNghiem 
+    error: loiXetNghiem,
   } = useGetAllServices();
   const danhSachXetNghiem = servicesResponse?.result;
 
   // Tạo đơn đặt lịch
-  const { mutate: taoDonDatLich, isPending: isTaoDonDatLichPending } = useCreateTestOrder();
+  const { mutate: taoDonDatLich, isPending: isTaoDonDatLichPending } =
+    useCreateTestOrder();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
-    setThongBaoLoi('');
-    setThongBaoThanhCong('');
+    setThongBaoLoi("");
+    setThongBaoThanhCong("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setThongBaoLoi('');
-    setThongBaoThanhCong('');
-    
+    setThongBaoLoi("");
+    setThongBaoThanhCong("");
+
     // Kiểm tra dữ liệu trước khi gửi
     if (!formData.hoTen.trim()) {
-      setThongBaoLoi('Vui lòng nhập họ và tên');
+      setThongBaoLoi("Vui lòng nhập họ và tên");
       return;
     }
     if (!formData.email.trim()) {
-      setThongBaoLoi('Vui lòng nhập email');
+      setThongBaoLoi("Vui lòng nhập email");
       return;
     }
     if (!formData.soDienThoai.trim()) {
-      setThongBaoLoi('Vui lòng nhập số điện thoại');
+      setThongBaoLoi("Vui lòng nhập số điện thoại");
       return;
     }
     if (!formData.phuongThucThuMauId) {
-      setThongBaoLoi('Vui lòng chọn phương thức thu mẫu');
+      setThongBaoLoi("Vui lòng chọn phương thức thu mẫu");
       return;
     }
     if (!formData.loaiXetNghiemId) {
-      setThongBaoLoi('Vui lòng chọn loại xét nghiệm');
+      setThongBaoLoi("Vui lòng chọn loại xét nghiệm");
       return;
     }
 
@@ -88,28 +103,59 @@ const Appointment = () => {
       phoneNumber: formData.soDienThoai,
       sampleMethodId: parseInt(formData.phuongThucThuMauId, 10),
       serviceId: parseInt(formData.loaiXetNghiemId, 10),
-      appointmentLocation: formData.ghiChu,
+      appointmentDate: formData.appointmentDate,
+      appointmentLocation: formData.appointmentLocation,
     };
 
     taoDonDatLich(requestData, {
       onSuccess: () => {
-        setThongBaoThanhCong('Đặt lịch thành công! Chúng tôi sẽ liên hệ với bạn trong thời gian sớm nhất.');
+        setThongBaoThanhCong(
+          "Đặt lịch thành công! Chúng tôi sẽ liên hệ với bạn trong thời gian sớm nhất."
+        );
         setFormData({
-          hoTen: '',
-          email: '',
-          soDienThoai: '',
-          phuongThucThuMauId: '',
-          loaiXetNghiemId: '',
-          ghiChu: '',
+          hoTen: "",
+          email: "",
+          soDienThoai: "",
+          phuongThucThuMauId: "",
+          loaiXetNghiemId: "",
+          appointmentDate: "",
+          appointmentLocation: "",
         });
-        setThongBaoLoi('');
+        setThongBaoLoi("");
       },
       onError: (error: any) => {
-        const errorMessage = error.response?.data?.errorMessage || error.message || 'Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau';
-        setThongBaoLoi(errorMessage);
-        setThongBaoThanhCong('');
+        setThongBaoLoi(parseErrorMessage(error));
+        setThongBaoThanhCong("");
       },
     });
+  };
+
+  // Thêm hàm parseErrorMessage giống bên ResultManagement
+  const parseErrorMessage = (err: any) => {
+    if (err?.data?.result) return err.data.result;
+    if (err?.response?.data?.errorMessage)
+      return err.response.data.errorMessage;
+    if (err?.message && typeof err.message === "string") {
+      let msg = err.message.trim();
+      if (msg.startsWith("Error: ")) {
+        msg = msg.slice(7);
+      }
+      if (msg.startsWith("{") && msg.endsWith("}")) {
+        try {
+          const parsed = JSON.parse(msg);
+          return (
+            parsed.result ||
+            parsed.errorMessage ||
+            parsed.message ||
+            "Lỗi không xác định"
+          );
+        } catch {
+          return err.message;
+        }
+      }
+      return msg;
+    }
+    return "Lỗi không xác định";
   };
 
   return (
@@ -120,14 +166,17 @@ const Appointment = () => {
             Đặt lịch xét nghiệm ADN
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Điền thông tin bên dưới để đặt lịch xét nghiệm ADN. Chúng tôi sẽ liên hệ với bạn trong thời gian sớm nhất.
+            Điền thông tin bên dưới để đặt lịch xét nghiệm ADN. Chúng tôi sẽ
+            liên hệ với bạn trong thời gian sớm nhất.
           </p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           <div className="px-8 py-6 bg-blue-600">
             <h2 className="text-2xl font-bold text-white flex items-center">
-              <span className="mr-2"><FaFlask /></span>
+              <span className="mr-2">
+                <FaFlask />
+              </span>
               Thông tin đặt lịch
             </h2>
           </div>
@@ -147,8 +196,13 @@ const Appointment = () => {
           <form onSubmit={handleSubmit} className="p-8 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2 group">
-                <label htmlFor="hoTen" className="flex items-center text-sm font-medium text-gray-700">
-                  <span className="mr-2 text-blue-600"><FaUser /></span>
+                <label
+                  htmlFor="hoTen"
+                  className="flex items-center text-sm font-medium text-gray-700"
+                >
+                  <span className="mr-2 text-blue-600">
+                    <FaUser />
+                  </span>
                   Họ và tên
                 </label>
                 <input
@@ -163,8 +217,13 @@ const Appointment = () => {
                 />
               </div>
               <div className="space-y-2 group">
-                <label htmlFor="email" className="flex items-center text-sm font-medium text-gray-700">
-                  <span className="mr-2 text-blue-600"><FaEnvelope /></span>
+                <label
+                  htmlFor="email"
+                  className="flex items-center text-sm font-medium text-gray-700"
+                >
+                  <span className="mr-2 text-blue-600">
+                    <FaEnvelope />
+                  </span>
                   Email
                 </label>
                 <input
@@ -182,8 +241,13 @@ const Appointment = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2 group">
-                <label htmlFor="soDienThoai" className="flex items-center text-sm font-medium text-gray-700">
-                  <span className="mr-2 text-blue-600"><FaPhone /></span>
+                <label
+                  htmlFor="soDienThoai"
+                  className="flex items-center text-sm font-medium text-gray-700"
+                >
+                  <span className="mr-2 text-blue-600">
+                    <FaPhone />
+                  </span>
                   Số điện thoại
                 </label>
                 <input
@@ -200,8 +264,13 @@ const Appointment = () => {
                 />
               </div>
               <div className="space-y-2 group">
-                <label htmlFor="phuongThucThuMauId" className="flex items-center text-sm font-medium text-gray-700">
-                  <span className="mr-2 text-blue-600"><FaFlask /></span>
+                <label
+                  htmlFor="phuongThucThuMauId"
+                  className="flex items-center text-sm font-medium text-gray-700"
+                >
+                  <span className="mr-2 text-blue-600">
+                    <FaFlask />
+                  </span>
                   Phương thức thu mẫu
                 </label>
                 <select
@@ -221,18 +290,27 @@ const Appointment = () => {
                   ))}
                 </select>
                 {dangTaiPhuongThuc && (
-                  <p className="mt-1 text-sm text-gray-500">Đang tải danh sách phương thức...</p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Đang tải danh sách phương thức...
+                  </p>
                 )}
                 {loiPhuongThuc && (
-                  <p className="mt-1 text-sm text-red-500">Không thể tải danh sách phương thức thu mẫu</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    Không thể tải danh sách phương thức thu mẫu
+                  </p>
                 )}
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2 group">
-                <label htmlFor="loaiXetNghiemId" className="flex items-center text-sm font-medium text-gray-700">
-                  <span className="mr-2 text-blue-600"><FaFlask /></span>
+                <label
+                  htmlFor="loaiXetNghiemId"
+                  className="flex items-center text-sm font-medium text-gray-700"
+                >
+                  <span className="mr-2 text-blue-600">
+                    <FaFlask />
+                  </span>
                   Loại xét nghiệm
                 </label>
                 <select
@@ -252,37 +330,74 @@ const Appointment = () => {
                   ))}
                 </select>
                 {dangTaiXetNghiem && (
-                  <p className="mt-1 text-sm text-gray-500">Đang tải danh sách xét nghiệm...</p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Đang tải danh sách xét nghiệm...
+                  </p>
                 )}
                 {loiXetNghiem && (
-                  <p className="mt-1 text-sm text-red-500">Không thể tải danh sách loại xét nghiệm</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    Không thể tải danh sách loại xét nghiệm
+                  </p>
                 )}
               </div>
             </div>
 
-            <div className="space-y-2 group">
-              <label htmlFor="ghiChu" className="flex items-center text-sm font-medium text-gray-700">
-                <span className="mr-2 text-blue-600"><FaNotesMedical /></span>
-                Ghi chú thêm
-              </label>
-              <textarea
-                id="ghiChu"
-                name="ghiChu"
-                value={formData.ghiChu}
-                onChange={handleChange}
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                placeholder="Nhập thông tin bổ sung nếu cần..."
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2 group">
+                <label
+                  htmlFor="appointmentDate"
+                  className="flex items-center text-sm font-medium text-gray-700"
+                >
+                  <span className="mr-2 text-blue-600">
+                    <FaNotesMedical />
+                  </span>
+                  Ngày hẹn
+                </label>
+                <input
+                  type="date"
+                  id="appointmentDate"
+                  name="appointmentDate"
+                  value={formData.appointmentDate}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Chọn ngày hẹn"
+                />
+              </div>
+              <div className="space-y-2 group">
+                <label
+                  htmlFor="appointmentLocation"
+                  className="flex items-center text-sm font-medium text-gray-700"
+                >
+                  <span className="mr-2 text-blue-600">
+                    <FaNotesMedical />
+                  </span>
+                  Địa điểm hẹn
+                </label>
+                <input
+                  type="text"
+                  id="appointmentLocation"
+                  name="appointmentLocation"
+                  value={formData.appointmentLocation}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Nhập địa điểm hẹn"
+                />
+              </div>
             </div>
 
             <div className="flex justify-end pt-4">
               <button
                 type="submit"
-                disabled={isTaoDonDatLichPending || dangTaiPhuongThuc || dangTaiXetNghiem}
+                disabled={
+                  isTaoDonDatLichPending ||
+                  dangTaiPhuongThuc ||
+                  dangTaiXetNghiem
+                }
                 className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center disabled:opacity-50"
               >
-                {isTaoDonDatLichPending ? 'Đang xử lý...' : 'Đặt lịch ngay'}
+                {isTaoDonDatLichPending ? "Đang xử lý..." : "Đặt lịch ngay"}
                 <FaArrowRight className="ml-2" />
               </button>
             </div>
@@ -293,4 +408,4 @@ const Appointment = () => {
   );
 };
 
-export default Appointment; 
+export default Appointment;
