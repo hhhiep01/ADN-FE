@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-const baseUrl = "https://9a58-118-69-182-144.ngrok-free.app/api";
+const baseUrl = "https://56f8-116-109-105-113.ngrok-free.app/api";
 
 export const queryClient = new QueryClient();
 
@@ -40,12 +40,6 @@ export const apiLinks = {
     delete: (id: string) => `${baseUrl}/Result/${id}`,
     userHistory: `${baseUrl}/Result/user-history`,
   },
-  SampleMethod: {
-    getAll: `${baseUrl}/SampleMethod`,
-  },
-  Service: {
-    getAll: `${baseUrl}/Service`,
-  },
   Blog: {
     getAll: `${baseUrl}/Blog`,
     create: `${baseUrl}/Blog`,
@@ -53,6 +47,21 @@ export const apiLinks = {
     getById: (id: string) => `${baseUrl}/Blog/${id}`,
     delete: (id: string) => `${baseUrl}/Blog/${id}`,
   },
+
+  Service: {
+    getAll: `${baseUrl}/Service`,
+    create: `${baseUrl}/Service`,
+    getById: (id: string) => `${baseUrl}/Service/${id}`,
+    update: `${baseUrl}/Service`,
+    delete: (id: string) => `${baseUrl}/Service/${id}`,
+  },
+
+  SampleMethod: {
+    getAll: `${baseUrl}/SampleMethod`,
+  },
+};
+
+export default apiLinks;
   UserAccount: {
     getUserProfile: `${baseUrl}/UserAccount/GetUserProfile`,
     updateUserProfile: `${baseUrl}/UserAccount/UpdateUserProfile`,

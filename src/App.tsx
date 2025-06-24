@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Layout from "./components/Layout";
 import AdminLayout from "./components/AdminLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -22,9 +21,10 @@ import StaffRegister from "./pages/StaffRegister";
 import VerifyEmail from "./pages/VerifyEmail";
 import CustomerVerifyEmail from "./pages/CustomerVerifyEmail";
 import StaffVerifyEmail from "./pages/StaffVerifyEmail";
-
+import ServiceManagement from "./pages/ServiceManagement";
 import BlogDetail from "./pages/BlogDetail";
 import BlogManagement from "./pages/BlogManagement";
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 
 const queryClient = new QueryClient();
 
@@ -171,6 +171,16 @@ function App() {
               <AdminLayout>
                 <ProtectedRoute allowedRoles={["staff"]}>
                   <BlogManagement />
+                </ProtectedRoute>
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/staff/services"
+            element={
+              <AdminLayout>
+                <ProtectedRoute allowedRoles={["staff"]}>
+                  <ServiceManagement />
                 </ProtectedRoute>
               </AdminLayout>
             }
