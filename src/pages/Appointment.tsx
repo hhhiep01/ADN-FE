@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FaUser,
   FaEnvelope,
@@ -13,6 +13,7 @@ import {
 } from "../Services/TestOrderService/CreateTestOrder";
 import { useGetAllSampleMethods } from "../Services/SampleMethodService/GetAllSampleMethods";
 import { useGetAllServices } from "../Services/ServiceService/GetAllServices";
+import { useGetUserProfile } from "../Services/UserAccountService/GetUserProfile";
 
 interface DuLieuDatLich {
   hoTen: string;
@@ -37,6 +38,26 @@ const Appointment = () => {
     appointmentDate: "",
     appointmentLocation: "",
   });
+
+  // Lấy thông tin user từ API
+  const {
+    data: userProfileResponse,
+    isLoading: dangTaiThongTinUser,
+    error: loiThongTinUser,
+  } = useGetUserProfile();
+
+  // Tự động điền thông tin user khi có dữ liệu
+  useEffect(() => {
+    if (userProfileResponse?.isSuccess && userProfileResponse.result) {
+      const userProfile = userProfileResponse.result;
+      setFormData((prev) => ({
+        ...prev,
+        hoTen: `${userProfile.firstName} ${userProfile.lastName}`.trim(),
+        email: userProfile.email || "",
+        soDienThoai: userProfile.phoneNumber || "",
+      }));
+    }
+  }, [userProfileResponse]);
 
   // Lấy danh sách phương thức thu mẫu
   const {
@@ -212,9 +233,20 @@ const Appointment = () => {
                   value={formData.hoTen}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Nhập họ và tên của bạn"
+                  disabled={dangTaiThongTinUser}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder={dangTaiThongTinUser ? "Đang tải thông tin..." : "Nhập họ và tên của bạn"}
                 />
+                {dangTaiThongTinUser && (
+                  <p className="mt-1 text-sm text-gray-500">
+                    Đang tải thông tin cá nhân...
+                  </p>
+                )}
+                {loiThongTinUser && (
+                  <p className="mt-1 text-sm text-red-500">
+                    Không thể tải thông tin cá nhân
+                  </p>
+                )}
               </div>
               <div className="space-y-2 group">
                 <label
@@ -233,8 +265,9 @@ const Appointment = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Nhập địa chỉ email của bạn"
+                  disabled={dangTaiThongTinUser}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder={dangTaiThongTinUser ? "Đang tải thông tin..." : "Nhập địa chỉ email của bạn"}
                 />
               </div>
             </div>
@@ -259,8 +292,9 @@ const Appointment = () => {
                   required
                   pattern="[0-9]{10}"
                   title="Vui lòng nhập số điện thoại 10 chữ số"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Nhập số điện thoại của bạn"
+                  disabled={dangTaiThongTinUser}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder={dangTaiThongTinUser ? "Đang tải thông tin..." : "Nhập số điện thoại của bạn"}
                 />
               </div>
               <div className="space-y-2 group">
@@ -393,7 +427,8 @@ const Appointment = () => {
                 disabled={
                   isTaoDonDatLichPending ||
                   dangTaiPhuongThuc ||
-                  dangTaiXetNghiem
+                  dangTaiXetNghiem ||
+                  dangTaiThongTinUser
                 }
                 className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center disabled:opacity-50"
               >
