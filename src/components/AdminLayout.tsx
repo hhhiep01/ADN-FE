@@ -202,9 +202,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         {/* Header */}
         <header className="bg-white shadow-sm">
           <div className="px-4 py-4">
-            <h1 className="text-2xl font-semibold text-gray-900">
-              {isAdmin ? "Quản trị hệ thống" : "Quản lý đơn hẹn"}
-            </h1>
+            {/* Đã xóa tiêu đề lớn ở đây */}
           </div>
         </header>
 

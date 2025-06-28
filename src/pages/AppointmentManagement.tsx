@@ -276,7 +276,7 @@ const AppointmentManagement = () => {
       <div className="px-6 py-4 border-b">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">
-            Danh sách đơn hẹn
+            Quản lý đơn hẹn
           </h2>
           <div className="flex space-x-4">
             <select
@@ -310,9 +310,6 @@ const AppointmentManagement = () => {
               <option value={2}>Hoàn thành</option>
               <option value={3}>Đã hủy</option>
             </select>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              Thêm đơn hẹn
-            </button>
           </div>
         </div>
       </div>
@@ -441,12 +438,6 @@ const AppointmentManagement = () => {
                   </select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    className="text-blue-600 hover:text-blue-900 mr-3"
-                    onClick={() => handleEdit(appointment)}
-                  >
-                    Chỉnh sửa
-                  </button>
                   <button 
                     className="text-red-600 hover:text-red-900"
                     onClick={() => handleDelete(appointment)}

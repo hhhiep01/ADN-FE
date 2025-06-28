@@ -7,7 +7,6 @@ export interface CreateSampleRequest {
   receivedDate: string;
   sampleStatus: number;
   notes: string;
-  collectedBy: number;
 }
 
 export const createSample = async (
