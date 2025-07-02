@@ -11,19 +11,6 @@ interface UserProfileData {
   address: string;
 }
 
-interface TestHistory {
-  id: string;
-  testType: string;
-  date: string;
-  status: string;
-  result?: string;
-  details?: {
-    accuracy: string;
-    conclusion: string;
-    recommendations: string[];
-  };
-}
-
 const Profile = () => {
   const { data: userProfileResponse, isLoading, error: getUserError } = useGetUserProfile();
   const { mutate: updateUser, isPending: isUpdating, isSuccess, error: updateError } = useUpdateUserProfile();
@@ -47,31 +34,6 @@ const Profile = () => {
       });
     }
   }, [userProfileResponse]);
-
-  const testHistory: TestHistory[] = [
-    {
-      id: 'ADN-2024-001',
-      testType: 'Xét nghiệm ADN Cha - Con',
-      date: '2024-02-20',
-      status: 'Hoàn thành',
-      result: '99.99% khả năng có quan hệ huyết thống',
-      details: {
-        accuracy: '99.99%',
-        conclusion: 'Xác nhận có quan hệ huyết thống trực hệ',
-        recommendations: [
-          'Kết quả này có thể được sử dụng cho các thủ tục pháp lý',
-          'Nên lưu trữ kết quả này cẩn thận',
-          'Có thể sử dụng kết quả này cho các xét nghiệm ADN khác trong tương lai'
-        ]
-      }
-    },
-    {
-      id: 'ADN-2024-002',
-      testType: 'Xét nghiệm ADN Mẹ - Con',
-      date: '2024-02-21',
-      status: 'Đang xử lý'
-    }
-  ];
 
   const handleProfileUpdate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,57 +169,6 @@ const Profile = () => {
               {isUpdating ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
             </button>
           </form>
-        </div>
-      </div>
-
-      {/* Test History Section */}
-      <div className="bg-white p-6 rounded-lg shadow-sm">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Lịch sử xét nghiệm</h2>
-        <div className="space-y-4">
-          {testHistory.map((test) => (
-            <div key={test.id} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h3 className="font-semibold text-gray-900">{test.testType}</h3>
-                  <p className="text-sm text-gray-600">ID: {test.id}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-600">{test.date}</p>
-                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${
-                    test.status === 'Hoàn thành' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {test.status}
-                  </span>
-                </div>
-              </div>
-              {test.result && (
-                <p className="text-sm text-gray-700 mb-2">{test.result}</p>
-              )}
-              {test.details && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <p className="text-sm text-gray-600 mb-1">
-                    <span className="font-medium">Độ chính xác:</span> {test.details.accuracy}
-                  </p>
-                  <p className="text-sm text-gray-600 mb-2">
-                    <span className="font-medium">Kết luận:</span> {test.details.conclusion}
-                  </p>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">Khuyến nghị:</p>
-                    <ul className="text-sm text-gray-600 space-y-1">
-                      {test.details.recommendations.map((rec, index) => (
-                        <li key={index} className="flex items-start">
-                          <span className="text-blue-500 mr-2">•</span>
-                          {rec}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
         </div>
       </div>
     </div>
