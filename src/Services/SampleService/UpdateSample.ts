@@ -8,7 +8,6 @@ export interface UpdateSampleRequest {
   receivedDate: string;
   sampleStatus: number;
   notes: string;
-  collectedBy: number;
 }
 
 export const updateSample = async (

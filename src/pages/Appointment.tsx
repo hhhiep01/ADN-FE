@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   FaUser,
   FaEnvelope,
@@ -14,6 +15,7 @@ import {
 import { useGetAllSampleMethods } from "../Services/SampleMethodService/GetAllSampleMethods";
 import { useGetAllServices } from "../Services/ServiceService/GetAllServices";
 import { useGetUserProfile } from "../Services/UserAccountService/GetUserProfile";
+import type { Service } from "../Services/ServiceService/GetAllServices";
 
 interface DuLieuDatLich {
   hoTen: string;
@@ -26,6 +28,9 @@ interface DuLieuDatLich {
 }
 
 const Appointment = () => {
+  const location = useLocation();
+  const selectedService = location.state?.selectedService as Service | undefined;
+  
   const [thongBaoLoi, setThongBaoLoi] = useState<string>("");
   const [thongBaoThanhCong, setThongBaoThanhCong] = useState<string>("");
 
@@ -34,7 +39,7 @@ const Appointment = () => {
     email: "",
     soDienThoai: "",
     phuongThucThuMauId: "",
-    loaiXetNghiemId: "",
+    loaiXetNghiemId: selectedService ? selectedService.id.toString() : "",
     appointmentDate: "",
     appointmentLocation: "",
   });
@@ -75,6 +80,11 @@ const Appointment = () => {
   } = useGetAllServices();
   const danhSachXetNghiem = servicesResponse?.result;
 
+  // Lấy thông tin giá của dịch vụ được chọn
+  const selectedServiceInfo = danhSachXetNghiem?.find(
+    (service) => service.id.toString() === formData.loaiXetNghiemId
+  );
+
   // Tạo đơn đặt lịch
   const { mutate: taoDonDatLich, isPending: isTaoDonDatLichPending } =
     useCreateTestOrder();
@@ -87,6 +97,15 @@ const Appointment = () => {
       ...prev,
       [name]: value,
     }));
+    
+    // Nếu chọn "Lấy mẫu tại trung tâm" (id: 2), xóa địa điểm hẹn
+    if (name === "phuongThucThuMauId" && value === "2") {
+      setFormData((prev) => ({
+        ...prev,
+        appointmentLocation: "",
+      }));
+    }
+    
     setThongBaoLoi("");
     setThongBaoThanhCong("");
   };
@@ -115,6 +134,14 @@ const Appointment = () => {
     }
     if (!formData.loaiXetNghiemId) {
       setThongBaoLoi("Vui lòng chọn loại xét nghiệm");
+      return;
+    }
+    if (!formData.appointmentDate) {
+      setThongBaoLoi("Vui lòng chọn ngày hẹn");
+      return;
+    }
+    if (formData.phuongThucThuMauId !== "2" && !formData.appointmentLocation.trim()) {
+      setThongBaoLoi("Vui lòng nhập địa điểm hẹn");
       return;
     }
 
@@ -359,10 +386,27 @@ const Appointment = () => {
                   <option value="">Chọn loại xét nghiệm</option>
                   {danhSachXetNghiem?.map((xetNghiem) => (
                     <option key={xetNghiem.id} value={xetNghiem.id}>
-                      {xetNghiem.name}
+                      {xetNghiem.name} - {xetNghiem.price?.toLocaleString()} đ
                     </option>
                   ))}
                 </select>
+                {selectedServiceInfo && (
+                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-green-800">
+                        Giá dịch vụ:
+                      </span>
+                      <span className="text-lg font-bold text-green-600">
+                        {selectedServiceInfo.price?.toLocaleString()} đ
+                      </span>
+                    </div>
+                    {selectedServiceInfo.description && (
+                      <p className="mt-1 text-xs text-green-700">
+                        {selectedServiceInfo.description}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {dangTaiXetNghiem && (
                   <p className="mt-1 text-sm text-gray-500">
                     Đang tải danh sách xét nghiệm...
@@ -414,10 +458,16 @@ const Appointment = () => {
                   name="appointmentLocation"
                   value={formData.appointmentLocation}
                   onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Nhập địa điểm hẹn"
+                  required={formData.phuongThucThuMauId !== "2"}
+                  disabled={formData.phuongThucThuMauId === "2"}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder={formData.phuongThucThuMauId === "2" ? "Không cần nhập khi lấy mẫu tại trung tâm" : "Nhập địa điểm hẹn"}
                 />
+                {formData.phuongThucThuMauId === "2" && (
+                  <p className="mt-1 text-sm text-gray-500">
+                    Không cần nhập địa điểm hẹn khi chọn lấy mẫu tại trung tâm
+                  </p>
+                )}
               </div>
             </div>
 

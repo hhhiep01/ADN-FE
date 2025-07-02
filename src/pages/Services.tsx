@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -12,6 +12,7 @@ import {
 import { useGetAllServices, type Service } from "../Services/ServiceService/GetAllServices";
 
 const Services = () => {
+  const navigate = useNavigate();
   const { data, isLoading, isError, error } = useGetAllServices();
   const services: Service[] = data?.result || [];
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -25,6 +26,14 @@ const Services = () => {
   };
   const handleNext = () => {
     if (canNext) setCurrentIndex(currentIndex + 1);
+  };
+
+  const handleBookAppointment = (service: Service) => {
+    navigate('/appointment', { 
+      state: { 
+        selectedService: service 
+      } 
+    });
   };
 
   const testimonials = [
@@ -170,12 +179,12 @@ const Services = () => {
                         <span className="text-3xl font-bold text-blue-600">{service.price?.toLocaleString()} đ</span>
                       </div>
                       <div className="mt-auto">
-                        <Link
-                          to="/appointment"
+                        <button
+                          onClick={() => handleBookAppointment(service)}
                           className="block w-full text-center bg-blue-600 text-white py-4 px-6 rounded-lg hover:bg-blue-700 transition-all duration-300 text-lg hover:shadow-lg transform hover:-translate-y-1"
                         >
                           Đặt lịch ngay
-                        </Link>
+                        </button>
                       </div>
                     </div>
                   </motion.div>

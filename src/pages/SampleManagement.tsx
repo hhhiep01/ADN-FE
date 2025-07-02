@@ -51,7 +51,6 @@ const SampleManagement = () => {
       receivedDate: "",
       sampleStatus: 0,
       notes: "",
-      collectedBy: 0,
     });
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -278,7 +277,6 @@ const SampleManagement = () => {
       receivedDate: sample.receivedDate,
       sampleStatus: sample.sampleStatus,
       notes: sample.notes,
-      collectedBy: sample.collectedBy,
     });
     setShowSampleEditModal(true);
   };
@@ -293,8 +291,7 @@ const SampleManagement = () => {
       ...prev,
       [name]:
         name === "testOrderId" ||
-        name === "sampleStatus" ||
-        name === "collectedBy"
+        name === "sampleStatus"
           ? Number(value)
           : value,
     }));
@@ -417,11 +414,6 @@ const SampleManagement = () => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {samples.map((sample: SampleItem) => {
-              console.log(
-                "Debug: sample.result in SampleManagement:",
-                sample.result
-              );
-              console.log("Sample Method:", sample.sampleMethod);
               return (
                 <tr key={sample.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -681,22 +673,6 @@ const SampleManagement = () => {
                     <option value={2}>Hoàn thành</option>
                     <option value={3}>Đã hủy</option>
                   </select>
-                </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="collectedBy"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    ID Người lấy mẫu
-                  </label>
-                  <input
-                    type="number"
-                    id="collectedBy"
-                    name="collectedBy"
-                    value={sampleEditFormData.collectedBy}
-                    onChange={handleSampleEditFormChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
                 </div>
               </div>
               <div className="mb-4">
