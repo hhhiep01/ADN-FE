@@ -11,6 +11,7 @@ import {
   type UpdateTestOrderRequest,
 } from "../Services/TestOrderService/UpdateTestOrder";
 import { useDeleteTestOrder } from "../Services/TestOrderService/DeleteTestOrder";
+import { createSample } from "../Services/SampleService/CreateSample";
 
 const sampleCollectionMethods = [
   {
@@ -407,8 +408,6 @@ const AppointmentManagement = () => {
                     >
                       <option value={0}>Chưa gửi</option>
                       <option value={1}>Đã gửi</option>
-                      <option value={2}>Đã nhận</option>
-                      <option value={3}>Đã trả về</option>
                     </select>
                   ) : (
                     <span className="text-gray-500">-</span>
@@ -433,17 +432,31 @@ const AppointmentManagement = () => {
                   >
                     <option value={0}>Chờ xác nhận</option>
                     <option value={1}>Đã xác nhận</option>
-                    <option value={2}>Hoàn thành</option>
-                    <option value={3}>Đã hủy</option>
                   </select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button 
-                    className="text-red-600 hover:text-red-900"
-                    onClick={() => handleDelete(appointment)}
-                    disabled={deleteTestOrderMutation.isPending}
+                  <button
+                    className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                    onClick={async () => {
+                      if (appointment.sampleMethods.id === 1 && appointment.deliveryKitStatus === 0) {
+                        alert("Không thể thêm mẫu xét nghiệm khi kit lấy mẫu chưa được gửi!");
+                        return;
+                      }
+                      try {
+                        await createSample({
+                          testOrderId: appointment.id,
+                          collectionDate: appointment.appointmentDate,
+                          receivedDate: "", // đã bỏ field này
+                          sampleStatus: 0, // Chờ xử lý
+                          notes: "Tạo từ quản lý đơn hẹn",
+                        });
+                        alert("Tạo mẫu xét nghiệm thành công!");
+                      } catch (err) {
+                        alert("Tạo mẫu xét nghiệm thất bại!");
+                      }
+                    }}
                   >
-                    {deleteTestOrderMutation.isPending ? 'Đang xóa...' : 'Hủy'}
+                    Thêm mẫu xét nghiệm
                   </button>
                 </td>
               </tr>
@@ -561,8 +574,15 @@ const AppointmentManagement = () => {
                   name="appointmentLocation"
                   value={editFormData.appointmentLocation}
                   onChange={handleEditInputChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  disabled={editFormData.sampleMethodId === 2}
+                  placeholder={editFormData.sampleMethodId === 2 ? "Không cần nhập khi lấy mẫu tại trung tâm" : "Nhập địa điểm hẹn"}
                 />
+                {editFormData.sampleMethodId === 2 && (
+                  <p className="mt-1 text-sm text-gray-500">
+                    Không cần nhập địa điểm hẹn khi chọn lấy mẫu tại trung tâm
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">

@@ -62,6 +62,18 @@ const SampleManagement = () => {
     notes: "",
   });
 
+  // 1. Thêm các state và hook cho chức năng thêm kết quả xét nghiệm
+  const [showAddResultModal, setShowAddResultModal] = useState(false);
+  const [addResultFormData, setAddResultFormData] = useState({
+    sampleId: 0,
+    resultDate: "",
+    conclusion: "",
+    filePath: "",
+  });
+  const [selectedAddResultFile, setSelectedAddResultFile] = useState<File | null>(null);
+  const [isAddResultUploading, setIsAddResultUploading] = useState(false);
+  const [uploadedAddResultFilePath, setUploadedAddResultFilePath] = useState<string | null>(null);
+
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error } = useQuery<GetAllSamplesResponse>({
@@ -124,6 +136,21 @@ const SampleManagement = () => {
     },
     onError: (err) => {
       alert(`Lỗi tạo mẫu mới: ${err.message}`);
+    },
+  });
+
+  const { mutate: createResultMutation, isPending: isCreatingResult } = useMutation({
+    mutationFn: async (payload: any) => {
+      const { createResult } = await import("../Services/ResultService/CreateResult");
+      return createResult(payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["samples"] });
+      setShowAddResultModal(false);
+      alert("Thêm kết quả mới thành công!");
+    },
+    onError: (err: any) => {
+      alert(err.message || "Lỗi thêm kết quả mới!");
     },
   });
 
@@ -344,6 +371,78 @@ const SampleManagement = () => {
     createSampleMutation.mutate(createFormData);
   };
 
+  // 2. Thêm các hàm xử lý
+  const handleShowAddResultModal = (sample: SampleItem) => {
+    // Ngày lấy mẫu + 7 ngày
+    const collectionDate = new Date(sample.collectionDate);
+    const resultDate = new Date(collectionDate);
+    resultDate.setDate(collectionDate.getDate() + 7);
+    setAddResultFormData({
+      sampleId: sample.id,
+      resultDate: resultDate.toISOString().split("T")[0],
+      conclusion: "",
+      filePath: "",
+    });
+    setSelectedAddResultFile(null);
+    setUploadedAddResultFilePath(null);
+    setShowAddResultModal(true);
+  };
+
+  const handleAddResultModalClose = () => {
+    setShowAddResultModal(false);
+    setSelectedAddResultFile(null);
+    setUploadedAddResultFilePath(null);
+  };
+
+  const handleAddResultFormChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setAddResultFormData((prevData) => ({
+      ...prevData,
+      [name]: name === "sampleId" ? Number(value) : value,
+    }));
+  };
+
+  const handleAddResultFileUpload = async () => {
+    if (!selectedAddResultFile) return;
+    setIsAddResultUploading(true);
+    try {
+      const url = await uploadPdfToCloudinary(selectedAddResultFile);
+      setUploadedAddResultFilePath(url);
+      setAddResultFormData((prev) => ({ ...prev, filePath: url }));
+      alert("Tải lên tệp thành công!");
+    } catch (err: any) {
+      alert(`Lỗi tải lên tệp: ${err.message}`);
+    } finally {
+      setIsAddResultUploading(false);
+    }
+  };
+
+  const handleAddResultFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Lấy ngày lấy mẫu của sample hiện tại
+    const sample = samples.find(s => s.id === addResultFormData.sampleId);
+    if (!sample) {
+      alert("Không tìm thấy mẫu xét nghiệm!");
+      return;
+    }
+    const collectionDate = new Date(sample.collectionDate);
+    const resultDate = new Date(addResultFormData.resultDate);
+    if (resultDate < collectionDate) {
+      alert("Ngày kết quả không được nhỏ hơn ngày lấy mẫu!");
+      return;
+    }
+    if (!uploadedAddResultFilePath) {
+      alert("Vui lòng tải lên file trước khi thêm kết quả!");
+      return;
+    }
+    createResultMutation({
+      ...addResultFormData,
+      filePath: uploadedAddResultFilePath,
+    });
+  };
+
   return (
     <div className="bg-white rounded-lg shadow">
       {/* Header */}
@@ -396,9 +495,6 @@ const SampleManagement = () => {
                 Ngày lấy mẫu
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ngày nhận mẫu
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Người lấy mẫu
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -406,6 +502,9 @@ const SampleManagement = () => {
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Ghi chú
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Thêm kết quả xét nghiệm
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Thao tác
@@ -438,11 +537,6 @@ const SampleManagement = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {new Date(sample.receivedDate).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
                       {sample.collectorName}
                     </div>
                   </td>
@@ -453,6 +547,23 @@ const SampleManagement = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{sample.notes}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {!sample.result ? (
+                      <button
+                        onClick={() => handleShowAddResultModal(sample)}
+                        className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                      >
+                        Thêm kết quả xét nghiệm
+                      </button>
+                    ) : (
+                      <button
+                        className="px-3 py-1 bg-gray-400 text-white rounded cursor-not-allowed"
+                        disabled
+                      >
+                        Đã có kết quả
+                      </button>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
@@ -633,7 +744,7 @@ const SampleManagement = () => {
                     type="datetime-local"
                     id="collectionDate"
                     name="collectionDate"
-                    value={sampleEditFormData.collectionDate.slice(0, 16)}
+                    value={(sampleEditFormData.collectionDate || "").slice(0, 16)}
                     onChange={handleSampleEditFormChange}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
@@ -649,7 +760,7 @@ const SampleManagement = () => {
                     type="datetime-local"
                     id="receivedDate"
                     name="receivedDate"
-                    value={sampleEditFormData.receivedDate.slice(0, 16)}
+                    value={(sampleEditFormData.receivedDate || "").slice(0, 16)}
                     onChange={handleSampleEditFormChange}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
@@ -820,6 +931,100 @@ const SampleManagement = () => {
                   disabled={createSampleMutation.isPending}
                 >
                   {createSampleMutation.isPending ? "Đang tạo..." : "Tạo mẫu"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Result Modal */}
+      {showAddResultModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl w-1/3">
+            <h3 className="text-lg font-semibold mb-4">Thêm kết quả mới</h3>
+            <form onSubmit={handleAddResultFormSubmit}>
+              <div className="mb-4">
+                <label htmlFor="addResultSampleId" className="block text-sm font-medium text-gray-700">Mã mẫu xét nghiệm</label>
+                <input
+                  type="number"
+                  id="addResultSampleId"
+                  name="sampleId"
+                  value={addResultFormData.sampleId}
+                  onChange={handleAddResultFormChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-100 text-gray-500 cursor-not-allowed"
+                  disabled
+                />
+              </div>
+              <div className="mb-4">
+                <label htmlFor="addResultDate" className="block text-sm font-medium text-gray-700">Ngày kết quả</label>
+                <input
+                  type="date"
+                  id="addResultDate"
+                  name="resultDate"
+                  value={addResultFormData.resultDate}
+                  onChange={handleAddResultFormChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  min={(() => {
+                    const sample = samples.find(s => s.id === addResultFormData.sampleId);
+                    if (!sample) return undefined;
+                    return new Date(sample.collectionDate).toISOString().split("T")[0];
+                  })()}
+                />
+              </div>
+              <div className="mb-4">
+                <label htmlFor="addResultConclusion" className="block text-sm font-medium text-gray-700">Kết luận</label>
+                <textarea
+                  id="addResultConclusion"
+                  name="conclusion"
+                  rows={3}
+                  value={addResultFormData.conclusion}
+                  onChange={handleAddResultFormChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                ></textarea>
+              </div>
+              <div className="mb-4">
+                <label htmlFor="addResultFilePath" className="block text-sm font-medium text-gray-700">Đường dẫn tệp</label>
+                <input
+                  type="file"
+                  id="addResultFilePath"
+                  name="filePath"
+                  onChange={(e) => setSelectedAddResultFile(e.target.files ? e.target.files[0] : null)}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+                {uploadedAddResultFilePath && (
+                  <a
+                    href={uploadedAddResultFilePath}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline mt-2 inline-block"
+                  >
+                    📄 Xem file đã tải lên
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAddResultFileUpload}
+                  disabled={!selectedAddResultFile || isAddResultUploading}
+                  className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {isAddResultUploading ? "Đang tải..." : "Tải lên file"}
+                </button>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleAddResultModalClose}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={isCreatingResult || isAddResultUploading}
+                >
+                  Thêm
                 </button>
               </div>
             </form>

@@ -16,6 +16,7 @@ import { useGetAllSampleMethods } from "../Services/SampleMethodService/GetAllSa
 import { useGetAllServices } from "../Services/ServiceService/GetAllServices";
 import { useGetUserProfile } from "../Services/UserAccountService/GetUserProfile";
 import type { Service } from "../Services/ServiceService/GetAllServices";
+import { createSample, type CreateSampleRequest } from "../Services/SampleService/CreateSample";
 
 interface DuLieuDatLich {
   hoTen: string;

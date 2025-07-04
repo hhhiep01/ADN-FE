@@ -308,12 +308,6 @@ const ResultManagement = () => {
           <h2 className="text-xl font-semibold text-gray-800">
             Quản lý kết quả xét nghiệm
           </h2>
-          <button
-            onClick={handleCreateClick}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Thêm kết quả mới
-          </button>
         </div>
       </div>
 
