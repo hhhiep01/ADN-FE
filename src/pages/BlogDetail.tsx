@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useLocation } from "react-router-dom";
 import { getBlog, type GetBlogResponse } from "../Services/BlogService/GetBlog";
 import { getAllBlog } from "../Services/BlogService/getAllBlog";
+import { getCommentsByBlogId, postComment, deleteComment, updateComment } from "../Services/CommentService/CommentService";
+import { useAuth } from "../hooks/useAuth";
 
 const BlogDetail = () => {
   const [activeTab, setActiveTab] = useState<
@@ -18,6 +20,16 @@ const BlogDetail = () => {
   const { id } = useParams<{ id: string }>();
 
   const [relatedBlogs, setRelatedBlogs] = useState<GetBlogResponse["result"][]>([]);
+  const [comment, setComment] = useState("");
+  const [comments, setComments] = useState<any[]>([]);
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState("");
+
+  const { isAuthenticated, isCustomer, isLoading: authLoading, user } = useAuth();
+  const location = useLocation();
 
   useEffect(() => {
     const fetchBlog = async () => {
@@ -52,12 +64,93 @@ const BlogDetail = () => {
     if (blog) fetchRelatedBlogs();
   }, [blog]);
 
+  // Lấy comment từ API
+  useEffect(() => {
+    const fetchComments = async () => {
+      if (!blog) return;
+      setCommentLoading(true);
+      setCommentError(null);
+      try {
+        const res = await getCommentsByBlogId(blog.id);
+        setComments(res.data.result || []);
+      } catch (err: any) {
+        setCommentError(err.message || "Lỗi khi tải bình luận");
+      } finally {
+        setCommentLoading(false);
+      }
+    };
+    if (blog) fetchComments();
+  }, [blog]);
+
   // Dummy send feedback function (replace with real API call if needed)
   const handleSendFeedback = () => {
     setFeedbackSent(true);
     setTimeout(() => setFeedbackSent(false), 3000);
     setFeedback("");
     // TODO: Gửi feedback cho admin ở đây
+  };
+
+  // Gửi comment thực tế
+  const handleSendComment = async () => {
+    if (!comment.trim() || !blog) return;
+    try {
+      setCommentLoading(true);
+      await postComment(comment, blog.id, user?.fullName);
+      setComment("");
+      // Reload comment list
+      const res = await getCommentsByBlogId(blog.id);
+      setComments(res.data.result || []);
+    } catch (err: any) {
+      setCommentError(err.message || "Lỗi khi gửi bình luận");
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  // Xóa comment
+  const handleDeleteComment = async (commentId: number) => {
+    if (!blog) return;
+    try {
+      setCommentLoading(true);
+      await deleteComment(commentId);
+      // Reload comment list
+      const res = await getCommentsByBlogId(blog.id);
+      setComments(res.data.result || []);
+    } catch (err: any) {
+      setCommentError(err.message || "Lỗi khi xóa bình luận");
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  // Bắt đầu chỉnh sửa comment
+  const handleStartEdit = (comment: any) => {
+    setEditingCommentId(comment.id);
+    setEditingContent(comment.content);
+  };
+
+  // Hủy chỉnh sửa
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditingContent("");
+  };
+
+  // Lưu chỉnh sửa
+  const handleSaveEdit = async (comment: any) => {
+    if (!blog) return;
+    try {
+      setCommentLoading(true);
+      await updateComment(comment.id, editingContent, blog.id);
+      setEditingCommentId(null);
+      setEditingContent("");
+      // Reload comment list
+      const res = await getCommentsByBlogId(blog.id);
+      setComments(res.data.result || []);
+    } catch (err: any) {
+      setCommentError(err.message || "Lỗi khi cập nhật bình luận");
+    } finally {
+      setCommentLoading(false);
+    }
   };
 
   function highlightQuestions(html: string): string {
@@ -192,6 +285,80 @@ const BlogDetail = () => {
           >
             &gt;
           </button>
+        </div>
+      </div>
+      {/* Comment Section */}
+      <div className="max-w-4xl mx-auto mt-12 mb-16 bg-white rounded-xl shadow p-6">
+        <h3 className="text-xl font-bold mb-4 text-[#1976d2]">Bình luận</h3>
+        {authLoading ? (
+          <div>Đang kiểm tra đăng nhập...</div>
+        ) : isAuthenticated && isCustomer ? (
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              className="flex-1 border rounded px-3 py-2"
+              placeholder="Nhập bình luận của bạn..."
+              value={comment}
+              onChange={e => setComment(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") handleSendComment(); }}
+              disabled={commentLoading}
+            />
+            <button
+              className="bg-[#1976d2] text-white px-4 py-2 rounded font-semibold"
+              onClick={handleSendComment}
+              disabled={commentLoading || !comment.trim()}
+            >
+              {commentLoading ? "Đang gửi..." : "Gửi"}
+            </button>
+          </div>
+        ) : (
+          <div className="mb-4 text-gray-500">
+            Bạn cần <Link to={`/customer/login?redirect=${encodeURIComponent(location.pathname)}`} className="text-blue-600 underline">đăng nhập</Link> bằng tài khoản khách hàng để bình luận.
+          </div>
+        )}
+        {commentError && <div className="text-red-500 mb-2">{commentError}</div>}
+        <div>
+          {commentLoading && comments.length === 0 ? (
+            <div>Đang tải bình luận...</div>
+          ) : comments.length === 0 ? (
+            <div className="text-gray-500">Chưa có bình luận nào.</div>
+          ) : (
+            <ul className="space-y-2">
+              {comments.map((c: any, idx: number) => {
+                const isMyComment = user && c.authorName && user.fullName && c.authorName === user.fullName;
+                return (
+                  <li key={c.id || idx} className="bg-[#f5f8fc] rounded px-3 py-2">
+                    <div className="font-semibold text-[#1976d2]">{c.authorName || "Ẩn danh"}</div>
+                    {editingCommentId === c.id ? (
+                      <>
+                        <textarea
+                          className="w-full border rounded px-2 py-1 mb-2"
+                          value={editingContent}
+                          onChange={e => setEditingContent(e.target.value)}
+                          rows={2}
+                        />
+                        <div className="flex gap-2 mb-1">
+                          <button className="px-3 py-1 bg-green-500 text-white rounded" onClick={() => handleSaveEdit(c)} disabled={commentLoading}>Lưu</button>
+                          <button className="px-3 py-1 bg-gray-300 rounded" onClick={handleCancelEdit} disabled={commentLoading}>Hủy</button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>{c.content}</div>
+                        <div className="text-xs text-gray-400">{c.createdDate ? new Date(c.createdDate).toLocaleString() : ""}</div>
+                        {isMyComment && (
+                          <div className="flex gap-2 mt-1">
+                            <button className="px-2 py-0.5 bg-yellow-400 text-xs rounded" onClick={() => handleStartEdit(c)} disabled={commentLoading}>Sửa</button>
+                            <button className="px-2 py-0.5 bg-red-400 text-xs text-white rounded" onClick={() => handleDeleteComment(c.id)} disabled={commentLoading}>Xóa</button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </div>
       {/* Footer */}

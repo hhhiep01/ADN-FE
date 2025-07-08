@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { login } from '../Services/AuthService/LoginService';
 import { decodeJWT } from '../utils/jwtUtils';
 import type { ResponseModel } from '../model/responseModel';
@@ -7,6 +7,7 @@ import { useMutation } from '@tanstack/react-query';
 
 const CustomerLogin = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -45,11 +46,13 @@ const CustomerLogin = () => {
         
         // Small delay to ensure localStorage is updated
         setTimeout(() => {
-          navigate('/');
+          const params = new URLSearchParams(location.search);
+          const redirect = params.get('redirect');
+          navigate(redirect || '/');
         }, 100);
       }
     }
-  }, [isSuccess, data, navigate]);
+  }, [isSuccess, data, navigate, location.search]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
