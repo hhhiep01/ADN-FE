@@ -83,6 +83,17 @@ const CustomerHistory: React.FC = () => {
     }
   };
 
+  const isTrungTam = (location?: string | null) => {
+    if (!location) return false;
+    const normalized = location.trim().toLowerCase();
+    return (
+      normalized.includes("trung tâm") ||
+      normalized.includes("trungtam") ||
+      normalized === "hcm" ||
+      normalized.includes("center")
+    );
+  };
+
   return (
     <div className="max-w-4xl mx-auto py-10">
       <h2 className="text-2xl font-bold mb-6 text-center">
@@ -119,7 +130,9 @@ const CustomerHistory: React.FC = () => {
                   <span className="font-medium">Trạng thái:</span>{" "}
                   {getStatusText(order.status)}
                   {order.deliveryKitStatus !== undefined &&
-                    order.deliveryKitStatus !== null && (
+                    order.deliveryKitStatus !== null &&
+                    order.appointmentLocation &&
+                    !isTrungTam(order.appointmentLocation) && (
                       <div>
                         <span className="font-medium">Kit Test:</span>{" "}
                         {order.deliveryKitStatus === 0
