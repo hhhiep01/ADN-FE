@@ -1,5 +1,6 @@
-import apiLinks from "../MainService";
-import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
+import { apiLinks } from "../MainService";
+import httpClient from "../../httpClient/httpClient";
 
 export interface Service {
   id: number;
@@ -68,22 +69,17 @@ export interface GetTestOrderByCustomerResponse {
   result: TestOrderCustomer[];
 }
 
-export const getTestOrderByCustomer = async (token: string): Promise<GetTestOrderByCustomerResponse> => {
-  try {
-    const response = await axios.get(apiLinks.TestOrder.getByCustomer, {
-      headers: {
-        Authorization: `bearer ${token}`,
-      },
+export const getTestOrderByCustomer =
+  async (): Promise<GetTestOrderByCustomerResponse> => {
+    const response = await httpClient.get({
+      url: apiLinks.TestOrder.getByCustomer,
     });
-    if (response.status !== 200) {
-      const errorData = response.data;
-      throw new Error(
-        errorData.errorMessage || errorData.result || "Failed to fetch test order history"
-      );
-    }
-    return response.data as GetTestOrderByCustomerResponse;
-  } catch (error) {
-    console.error("Error fetching test order history:", error);
-    throw error;
-  }
-}; 
+    return response.data;
+  };
+
+export const useGetTestOrderByCustomer = () => {
+  return useQuery<GetTestOrderByCustomerResponse, Error>({
+    queryKey: ["testOrderByCustomer"],
+    queryFn: getTestOrderByCustomer,
+  });
+};
