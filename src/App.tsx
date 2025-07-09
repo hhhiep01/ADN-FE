@@ -25,6 +25,7 @@ import ServiceManagement from "./pages/ServiceManagement";
 import BlogDetail from "./pages/BlogDetail";
 import BlogManagement from "./pages/BlogManagement";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import CustomerHistory from "./pages/CustomerHistory";
 
 const queryClient = new QueryClient();
 
@@ -107,6 +108,16 @@ function App() {
               <Layout>
                 <ProtectedRoute allowedRoles={["customer"]}>
                   <Profile />
+                </ProtectedRoute>
+              </Layout>
+            }
+          />
+          <Route
+            path="/customer/history"
+            element={
+              <Layout>
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <CustomerHistory />
                 </ProtectedRoute>
               </Layout>
             }

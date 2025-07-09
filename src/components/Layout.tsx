@@ -41,6 +41,9 @@ const Layout = ({ children }: LayoutProps) => {
                   <Link to="/results" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500">
                     Kết quả xét nghiệm
                   </Link>
+                  <Link to="/customer/history" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500">
+                    Lịch sử xét nghiệm
+                  </Link>
                   <Link to="/profile" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500">
                     Tài khoản
                   </Link>
