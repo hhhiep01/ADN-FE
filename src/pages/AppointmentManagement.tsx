@@ -19,10 +19,6 @@ const sampleCollectionMethods = [
     name: "Lấy mẫu tại trung tâm",
   },
   {
-    id: 3,
-    name: "Nhân viên lấy mẫu tại nhà",
-  },
-  {
     id: 1,
     name: "Tự lấy mẫu tại nhà",
   },
