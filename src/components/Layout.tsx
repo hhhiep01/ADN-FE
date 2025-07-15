@@ -44,9 +44,6 @@ const Layout = ({ children }: LayoutProps) => {
                   <Link to="/customer/history" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500">
                     Lịch sử xét nghiệm
                   </Link>
-                  <Link to="/profile" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500">
-                    Tài khoản
-                  </Link>
                 </>
               )}
 
@@ -65,7 +62,12 @@ const Layout = ({ children }: LayoutProps) => {
               )}
             </div>
             
-            <div className="flex items-center">
+            <div className="flex items-center gap-x-4">
+              {isAuthenticated && user?.role.toLowerCase() === 'customer' && (
+                <Link to="/profile" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500">
+                  Tài khoản
+                </Link>
+              )}
               {isAuthenticated ? (
                 <button
                   onClick={handleLogout}
