@@ -19,10 +19,6 @@ const sampleCollectionMethods = [
     name: "Lấy mẫu tại trung tâm",
   },
   {
-    id: 3,
-    name: "Nhân viên lấy mẫu tại nhà",
-  },
-  {
     id: 1,
     name: "Tự lấy mẫu tại nhà",
   },
@@ -395,23 +391,41 @@ const AppointmentManagement = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {appointment.sampleMethods.id === 1 ? (
-                    <select
-                      value={appointment.deliveryKitStatus}
-                      onChange={(e) =>
-                        handleDeliveryStatusChange(
-                          appointment.id,
-                          Number(e.target.value)
-                        )
-                      }
-                      className="px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      disabled={updateDeliveryStatusMutation.isPending}
-                    >
-                      <option value={0}>Chưa gửi</option>
-                      <option value={1}>Đã gửi</option>
-                    </select>
-                  ) : (
+                    appointment.deliveryKitStatus === 1 ? (
+                      <select
+                        value={1}
+                        disabled
+                        className="px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value={1}>Đã gửi</option>
+                      </select>
+                    ) : appointment.deliveryKitStatus === 2 ? (
+                      <select
+                        value={2}
+                        disabled
+                        className="px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value={2}>Đã trả về</option>
+                      </select>
+                    ) : (
+                      <select
+                        value={appointment.deliveryKitStatus}
+                        onChange={(e) =>
+                          handleDeliveryStatusChange(
+                            appointment.id,
+                            Number(e.target.value)
+                          )
+                        }
+                        className="px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={updateDeliveryStatusMutation.isPending}
+                      >
+                        <option value={0}>Chưa gửi</option>
+                        <option value={1}>Đã gửi</option>
+                      </select>
+                    )
+                  ) : appointment.sampleMethods.id === 3 ? (
                     <span className="text-gray-500">-</span>
-                  )}
+                  ) : null}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
@@ -436,8 +450,10 @@ const AppointmentManagement = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button
-                    className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                    className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={appointment.status !== 1}
                     onClick={async () => {
+                      if (appointment.status !== 1) return; // Không cho thao tác nếu chưa xác nhận
                       if (appointment.sampleMethods.id === 1 && appointment.deliveryKitStatus === 0) {
                         alert("Không thể thêm mẫu xét nghiệm khi kit lấy mẫu chưa được gửi!");
                         return;
