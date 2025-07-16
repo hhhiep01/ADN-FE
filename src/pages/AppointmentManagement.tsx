@@ -49,6 +49,19 @@ const AppointmentManagement = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [testOrderToDelete, setTestOrderToDelete] = useState<TestOrderItem | null>(null);
 
+  // State for send kit test modal
+  const [showSendKitModal, setShowSendKitModal] = useState(false);
+  const [sendKitForm, setSendKitForm] = useState<UpdateTestOrderRequest | null>(null);
+  const [sendingKit, setSendingKit] = useState(false);
+
+  // State cho popup gửi kit test
+  // Remove all state related to send kit modal
+  // const [showSendKitModal, setShowSendKitModal] = useState(false);
+  // const [selectedAppointment, setSelectedAppointment] = useState<TestOrderItem | null>(null);
+  // const [isSendingKit, setIsSendingKit] = useState(false);
+  // const [sendKitForm, setSendKitForm] = useState<UpdateTestOrderRequest | null>(null);
+  // const [sendKitDeliveryStatus, setSendKitDeliveryStatus] = useState<number | null>(null);
+
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error } = useQuery({
@@ -390,42 +403,10 @@ const AppointmentManagement = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {appointment.sampleMethods.id === 1 ? (
-                    appointment.deliveryKitStatus === 1 ? (
-                      <select
-                        value={1}
-                        disabled
-                        className="px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value={1}>Đã gửi</option>
-                      </select>
-                    ) : appointment.deliveryKitStatus === 2 ? (
-                      <select
-                        value={2}
-                        disabled
-                        className="px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value={2}>Đã trả về</option>
-                      </select>
-                    ) : (
-                      <select
-                        value={appointment.deliveryKitStatus}
-                        onChange={(e) =>
-                          handleDeliveryStatusChange(
-                            appointment.id,
-                            Number(e.target.value)
-                          )
-                        }
-                        className="px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={updateDeliveryStatusMutation.isPending}
-                      >
-                        <option value={0}>Chưa gửi</option>
-                        <option value={1}>Đã gửi</option>
-                      </select>
-                    )
-                  ) : appointment.sampleMethods.id === 3 ? (
-                    <span className="text-gray-500">-</span>
-                  ) : null}
+                  {/* Hiển thị text trạng thái kit thay vì dropdown */}
+                  <span className="text-sm text-gray-900">
+                    {getDeliveryKitStatusText(appointment.deliveryKitStatus)}
+                  </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
@@ -453,7 +434,7 @@ const AppointmentManagement = () => {
                     className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={appointment.status !== 1}
                     onClick={async () => {
-                      if (appointment.status !== 1) return; // Không cho thao tác nếu chưa xác nhận
+                      if (appointment.status !== 1) return;
                       if (appointment.sampleMethods.id === 1 && appointment.deliveryKitStatus === 0) {
                         alert("Không thể thêm mẫu xét nghiệm khi kit lấy mẫu chưa được gửi!");
                         return;
@@ -462,8 +443,8 @@ const AppointmentManagement = () => {
                         await createSample({
                           testOrderId: appointment.id,
                           collectionDate: appointment.appointmentDate,
-                          receivedDate: "", // đã bỏ field này
-                          sampleStatus: 0, // Chờ xử lý
+                          receivedDate: "",
+                          sampleStatus: 0,
                           notes: "Tạo từ quản lý đơn hẹn",
                         });
                         alert("Tạo mẫu xét nghiệm thành công!");
@@ -473,6 +454,26 @@ const AppointmentManagement = () => {
                     }}
                   >
                     Thêm mẫu xét nghiệm
+                  </button>
+                  {/* Button gửi kit test - now opens editable modal */}
+                  <button
+                    className="ml-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={updateDeliveryStatusMutation.isPending}
+                    onClick={() => {
+                      setSendKitForm({
+                        id: appointment.id,
+                        serviceId: appointment.services.id,
+                        sampleMethodId: appointment.sampleMethods.id,
+                        phoneNumber: appointment.phoneNumber,
+                        email: appointment.email,
+                        fullName: appointment.userName || appointment.fullName,
+                        appointmentDate: appointment.appointmentDate,
+                        appointmentLocation: appointment.appointmentLocation,
+                      });
+                      setShowSendKitModal(true);
+                    }}
+                  >
+                    Gửi kit test
                   </button>
                 </td>
               </tr>
@@ -664,6 +665,69 @@ const AppointmentManagement = () => {
                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
               >
                 {deleteTestOrderMutation.isPending ? "Đang xóa..." : "Xóa"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal gửi kit test với các trường có thể chỉnh sửa */}
+      {showSendKitModal && sendKitForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-2 animate-fadeIn">
+            <h3 className="text-2xl font-bold mb-6 text-center text-blue-700 tracking-wide">Xác nhận gửi kit test</h3>
+            <div className="space-y-4">
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Mã đơn hẹn:</label>
+                <div className="bg-gray-100 rounded px-3 py-2 text-gray-800">{sendKitForm.id}</div>
+              </div>
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Khách hàng</label>
+                <input type="text" className="border rounded-lg px-3 py-2 w-full" value={sendKitForm.fullName} onChange={e => setSendKitForm(f => ({ ...f!, fullName: e.target.value }))} />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Email</label>
+                <input type="email" className="border rounded-lg px-3 py-2 w-full" value={sendKitForm.email} onChange={e => setSendKitForm(f => ({ ...f!, email: e.target.value }))} />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Số điện thoại</label>
+                <input type="tel" className="border rounded-lg px-3 py-2 w-full" value={sendKitForm.phoneNumber} onChange={e => setSendKitForm(f => ({ ...f!, phoneNumber: e.target.value }))} />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Địa điểm hẹn</label>
+                <input type="text" className="border rounded-lg px-3 py-2 w-full" value={sendKitForm.appointmentLocation} onChange={e => setSendKitForm(f => ({ ...f!, appointmentLocation: e.target.value }))} />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Ngày hẹn</label>
+                <input type="datetime-local" className="border rounded-lg px-3 py-2 w-full" value={sendKitForm.appointmentDate.slice(0,16)} onChange={e => setSendKitForm(f => ({ ...f!, appointmentDate: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                onClick={() => { setShowSendKitModal(false); setSendKitForm(null); }}
+                className="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition"
+                disabled={sendingKit}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={async () => {
+                  setSendingKit(true);
+                  try {
+                    await updateTestOrder(sendKitForm);
+                    alert("Gửi kit test thành công!");
+                    setShowSendKitModal(false);
+                    setSendKitForm(null);
+                  } catch (err) {
+                    alert("Gửi kit test thất bại!");
+                  } finally {
+                    setSendingKit(false);
+                  }
+                }}
+                disabled={sendingKit}
+                className="px-5 py-2 rounded-lg text-white font-semibold bg-gradient-to-r from-blue-500 to-blue-700 shadow hover:from-blue-600 hover:to-blue-800 transition disabled:opacity-60"
+              >
+                {sendingKit ? "Đang gửi..." : "Xác nhận gửi kit test"}
               </button>
             </div>
           </div>

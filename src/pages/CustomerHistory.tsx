@@ -4,6 +4,7 @@ import { useGetTestOrderByCustomer } from "../Services/TestOrderService/GetTestO
 import type { TestOrderCustomer } from "../Services/TestOrderService/GetTestOrderByCustomer";
 import { updateTestOrderDeliveryStatus } from "../Services/TestOrderService/UpdateTestOrderDeliveryStatus";
 import { useQueryClient } from "@tanstack/react-query";
+import { createSample } from "../Services/SampleService/CreateSample";
 
 interface Service {
   id: number;
@@ -42,6 +43,7 @@ const CustomerHistory: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useGetTestOrderByCustomer();
+  const [showSendSampleModal, setShowSendSampleModal] = React.useState<TestOrderCustomer | null>(null);
   console.log("API response:", data);
   if (error) {
     console.error("API error:", error);
@@ -124,7 +126,7 @@ const CustomerHistory: React.FC = () => {
               className="bg-white rounded-2xl shadow-lg p-6 mb-4 transition hover:shadow-xl"
             >
               <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2 gap-4">
-                <div>
+                <div className="flex-1">
                   <div className="font-semibold text-blue-700 text-lg mb-1">
                     {order.services?.name}
                   </div>
@@ -137,47 +139,100 @@ const CustomerHistory: React.FC = () => {
                   <div className="text-sm text-gray-500 mb-1">
                     <span className="font-medium text-gray-700">Địa điểm:</span> {order.appointmentLocation}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-gray-500 mb-2">
                     <span className="font-medium text-gray-700">Phương pháp lấy mẫu:</span> {order.sampleMethods?.name}
                   </div>
+                  {order.sampleMethods?.id !== 2 && (
+                    <div className="w-full flex flex-wrap items-center gap-3 mt-2 mb-2">
+                      <span className="font-medium text-gray-700">Kit Test:</span>
+                      <span className="inline-block px-4 py-2 rounded-full bg-white text-indigo-700 font-semibold ml-1 border border-indigo-100 text-base">
+                        {order.deliveryKitStatus === 0 ? "Chưa gửi kit"
+                          : order.deliveryKitStatus === 1 ? "Đã gửi kit"
+                          : order.deliveryKitStatus === 2 ? "Đã trả về kit"
+                          : order.deliveryKitStatus === 3 ? "Đã nhận kit"
+                          : "Khác"}
+                      </span>
+                      {order.sampleMethods?.id === 1 && order.deliveryKitStatus === 1 && (
+                        <button
+                          className="px-3 py-1 rounded-full bg-green-500 text-white font-medium hover:bg-green-600 transition text-xs shadow"
+                          onClick={() => handleConfirmSentKit(order.id, 3)}
+                        >
+                          Xác nhận đã nhận kit test
+                        </button>
+                      )}
+                      {order.sampleMethods?.id === 1 && (order.deliveryKitStatus === 0 || order.deliveryKitStatus === 1 || order.deliveryKitStatus === 3) && (
+                        <button
+                          className="px-3 py-1 rounded-full bg-blue-500 text-white font-medium hover:bg-blue-600 transition text-xs shadow"
+                          onClick={() => setShowSendSampleModal(order)}
+                        >
+                          Gửi mẫu về trung tâm
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="mt-2 md:mt-0 text-sm text-right min-w-[140px]">
-                  <span className="font-medium text-gray-700">Trạng thái:</span>{" "}
-                  <span className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold ml-1">
-                    {getStatusText(order.status)}
-                  </span>
-                  {order.deliveryKitStatus !== undefined &&
-                    order.deliveryKitStatus !== null &&
-                    order.appointmentLocation &&
-                    !isTrungTam(order.appointmentLocation) &&
-                    order.sampleMethods?.id !== 2 && (
-                      <div className="mt-2">
-                        <span className="font-medium text-gray-700">Kit Test:</span>{" "}
-                        {order.sampleMethods?.id === 1 && order.deliveryKitStatus === 1 ? (
-                          <button
-                            className="inline-block px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold ml-1 hover:bg-indigo-100 transition"
-                            onClick={() => handleConfirmSentKit(order.id, 2)}
-                            title="Bấm để xác nhận đã trả về kit"
-                          >
-                            Đã gửi kit (bấm để xác nhận trả về)
-                          </button>
-                        ) : (
-                          <span className="inline-block px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold ml-1">
-                            {order.deliveryKitStatus === 0
-                              ? "Chưa gửi kit"
-                              : order.deliveryKitStatus === 1
-                              ? "Đã gửi kit"
-                              : order.deliveryKitStatus === 2
-                              ? "Đã trả về kit"
-                              : "Khác"}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                <div className="flex flex-col items-end md:items-end mt-4 md:mt-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium text-gray-700">Trạng thái:</span>
+                    <span className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold ml-1">
+                      {getStatusText(order.status)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {/* Confirmation popup for sending sample to center */}
+      {showSendSampleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-2 animate-fadeIn">
+            <h3 className="text-2xl font-bold mb-6 text-center text-blue-700 tracking-wide">Xác nhận gửi mẫu về trung tâm</h3>
+            <div className="space-y-4">
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Mã đơn hẹn:</label>
+                <div className="bg-gray-100 rounded px-3 py-2 text-gray-800">{showSendSampleModal.id}</div>
+              </div>
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Khách hàng</label>
+                <input type="text" className="border rounded-lg px-3 py-2 w-full" value={showSendSampleModal.fullName || showSendSampleModal.userName || ''} disabled />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Email</label>
+                <input type="email" className="border rounded-lg px-3 py-2 w-full" value={showSendSampleModal.email || ''} disabled />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Số điện thoại</label>
+                <input type="tel" className="border rounded-lg px-3 py-2 w-full" value={showSendSampleModal.phoneNumber || ''} disabled />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Địa điểm hẹn</label>
+                <input type="text" className="border rounded-lg px-3 py-2 w-full" value={showSendSampleModal.appointmentLocation || ''} disabled />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Ngày hẹn</label>
+                <input type="datetime-local" className="border rounded-lg px-3 py-2 w-full" value={(showSendSampleModal.appointmentDate || '').slice(0,16)} disabled />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                onClick={() => setShowSendSampleModal(null)}
+                className="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  handleConfirmSentKit(showSendSampleModal.id, 2);
+                  setShowSendSampleModal(null);
+                }}
+                className="px-5 py-2 rounded-lg text-white font-semibold bg-gradient-to-r from-blue-500 to-blue-700 shadow hover:from-blue-600 hover:to-blue-800 transition"
+              >
+                Xác nhận gửi mẫu về trung tâm
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
