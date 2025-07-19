@@ -44,6 +44,8 @@ const CustomerHistory: React.FC = () => {
   const queryClient = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useGetTestOrderByCustomer();
   const [showSendSampleModal, setShowSendSampleModal] = React.useState<TestOrderCustomer | null>(null);
+  const [shippingProvider, setShippingProvider] = React.useState("");
+  const [trackingNumber, setTrackingNumber] = React.useState("");
   console.log("API response:", data);
   if (error) {
     console.error("API error:", error);
@@ -102,7 +104,13 @@ const CustomerHistory: React.FC = () => {
   const handleConfirmSentKit = async (orderId: number, newStatus: number) => {
     try {
       await updateTestOrderDeliveryStatus({ id: orderId, deliveryKitStatus: newStatus });
-      alert(newStatus === 2 ? "Xác nhận đã trả về kit thành công!" : "Xác nhận đã gửi kit thành công!");
+      if (newStatus === 2) {
+        alert("Xác nhận đã trả về kit thành công!");
+      } else if (newStatus === 3) {
+        alert("Xác nhận đã nhận kit thành công!");
+      } else {
+        alert("Xác nhận đã gửi kit thành công!");
+      }
       await refetch();
     } catch (err) {
       alert("Cập nhật trạng thái kit thất bại!");
@@ -164,6 +172,7 @@ const CustomerHistory: React.FC = () => {
                         <button
                           className="px-3 py-1 rounded-full bg-blue-500 text-white font-medium hover:bg-blue-600 transition text-xs shadow"
                           onClick={() => setShowSendSampleModal(order)}
+                          disabled={order.deliveryKitStatus !== 3}
                         >
                           Gửi mẫu về trung tâm
                         </button>
@@ -214,6 +223,26 @@ const CustomerHistory: React.FC = () => {
                 <label className="font-semibold text-gray-700 mb-1">Ngày hẹn</label>
                 <input type="datetime-local" className="border rounded-lg px-3 py-2 w-full" value={(showSendSampleModal.appointmentDate || '').slice(0,16)} disabled />
               </div>
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Đơn vị vận chuyển</label>
+                <input
+                  type="text"
+                  className="border rounded-lg px-3 py-2 w-full"
+                  value={shippingProvider}
+                  onChange={e => setShippingProvider(e.target.value)}
+                  placeholder="Nhập tên đơn vị vận chuyển"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-semibold text-gray-700 mb-1">Mã vận đơn</label>
+                <input
+                  type="text"
+                  className="border rounded-lg px-3 py-2 w-full"
+                  value={trackingNumber}
+                  onChange={e => setTrackingNumber(e.target.value)}
+                  placeholder="Nhập mã vận đơn"
+                />
+              </div>
             </div>
             <div className="flex justify-end gap-3 mt-8">
               <button
@@ -223,9 +252,21 @@ const CustomerHistory: React.FC = () => {
                 Hủy
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
+                  // Gọi API tạo sample với shippingProvider và trackingNumber
+                  await createSample({
+                    testOrderId: showSendSampleModal.id,
+                    collectionDate: showSendSampleModal.appointmentDate,
+                    receivedDate: "",
+                    sampleStatus: 1,
+                    notes: "Gửi mẫu về trung tâm",
+                    shippingProvider,
+                    trackingNumber,
+                  });
                   handleConfirmSentKit(showSendSampleModal.id, 2);
                   setShowSendSampleModal(null);
+                  setShippingProvider("");
+                  setTrackingNumber("");
                 }}
                 className="px-5 py-2 rounded-lg text-white font-semibold bg-gradient-to-r from-blue-500 to-blue-700 shadow hover:from-blue-600 hover:to-blue-800 transition"
               >

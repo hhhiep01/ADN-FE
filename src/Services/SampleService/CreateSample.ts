@@ -7,6 +7,8 @@ export interface CreateSampleRequest {
   receivedDate: string;
   sampleStatus: number;
   notes: string;
+  shippingProvider: string;
+  trackingNumber: string;
 }
 
 export const createSample = async (

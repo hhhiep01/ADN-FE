@@ -160,9 +160,9 @@ const AppointmentManagement = () => {
       case 1:
         return "Đã gửi";
       case 2:
-        return "Đã nhận";
+        return "Đã gửi về";
       case 3:
-        return "Đã trả về";
+        return "Đã nhận kit";
       default:
         return "Không xác định";
     }
@@ -354,7 +354,7 @@ const AppointmentManagement = () => {
                 Trạng thái kit lấy mẫu
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ngày hẹn
+                Ngày & giờ hẹn
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Trạng thái đơn hẹn
@@ -410,7 +410,9 @@ const AppointmentManagement = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
-                    {new Date(appointment.appointmentDate).toLocaleDateString()}
+                    {appointment.appointmentDate
+                      ? new Date(appointment.appointmentDate).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" })
+                      : "---"}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -446,6 +448,8 @@ const AppointmentManagement = () => {
                           receivedDate: "",
                           sampleStatus: 0,
                           notes: "Tạo từ quản lý đơn hẹn",
+                          shippingProvider: "",
+                          trackingNumber: "",
                         });
                         alert("Tạo mẫu xét nghiệm thành công!");
                       } catch (err) {
@@ -458,7 +462,7 @@ const AppointmentManagement = () => {
                   {/* Button gửi kit test - now opens editable modal */}
                   <button
                     className="ml-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={updateDeliveryStatusMutation.isPending}
+                    disabled={updateDeliveryStatusMutation.isPending || appointment.sampleMethods.id === 2}
                     onClick={() => {
                       setSendKitForm({
                         id: appointment.id,
@@ -714,10 +718,11 @@ const AppointmentManagement = () => {
                 onClick={async () => {
                   setSendingKit(true);
                   try {
-                    await updateTestOrder(sendKitForm);
+                    await updateTestOrderDeliveryStatus({ id: sendKitForm.id, deliveryKitStatus: 1 });
                     alert("Gửi kit test thành công!");
                     setShowSendKitModal(false);
                     setSendKitForm(null);
+                    queryClient.invalidateQueries({ queryKey: ["testOrders"] });
                   } catch (err) {
                     alert("Gửi kit test thất bại!");
                   } finally {

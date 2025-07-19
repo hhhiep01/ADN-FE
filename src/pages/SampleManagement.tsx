@@ -60,6 +60,8 @@ const SampleManagement = () => {
     receivedDate: "",
     sampleStatus: 0,
     notes: "",
+    shippingProvider: "",
+    trackingNumber: "",
   });
 
   // 1. Thêm các state và hook cho chức năng thêm kết quả xét nghiệm
@@ -131,6 +133,8 @@ const SampleManagement = () => {
         receivedDate: "",
         sampleStatus: 0,
         notes: "",
+        shippingProvider: "",
+        trackingNumber: "",
       });
       alert("Tạo mẫu mới thành công!");
     },
@@ -343,6 +347,8 @@ const SampleManagement = () => {
       receivedDate: "",
       sampleStatus: 0,
       notes: "",
+      shippingProvider: "",
+      trackingNumber: "",
     });
   };
 
@@ -443,6 +449,23 @@ const SampleManagement = () => {
     });
   };
 
+  // Enum trạng thái gửi kit
+  const DeliveryKitStatus = {
+    NotSent: 0,
+    Sent: 1,
+    SentBack: 2,
+    Received: 3,
+  };
+
+  // Hàm xử lý cập nhật trạng thái gửi kit
+  const handleUpdateKitStatus = (sampleId: number, newStatus: number) => {
+    // Gọi mutation hoặc API cập nhật trạng thái gửi kit cho mẫu
+    // Ví dụ:
+    // updateSampleKitStatus({ id: sampleId, deliveryKitStatus: newStatus })
+    //   .then(() => queryClient.invalidateQueries({ queryKey: ["samples"] }));
+    alert(`Cập nhật trạng thái kit cho mẫu ${sampleId} sang trạng thái ${newStatus}`);
+  };
+
   return (
     <div className="bg-white rounded-lg shadow">
       {/* Header */}
@@ -504,6 +527,12 @@ const SampleManagement = () => {
                 Ghi chú
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Đơn vị vận chuyển
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Mã vận đơn
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Thêm kết quả xét nghiệm
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -547,6 +576,12 @@ const SampleManagement = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{sample.notes}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{sample.shippingProvider}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{sample.trackingNumber}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     {!sample.result ? (

@@ -33,6 +33,8 @@ export interface SampleItem {
   testOrder: TestOrderNested;
   result?: SampleResultNested;
   sampleMethod?: SampleMethodNested;
+  shippingProvider?: string;
+  trackingNumber?: string;
 }
 
 export interface GetAllSamplesResponse {

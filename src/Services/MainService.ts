@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-const baseUrl = "https://a3acd3c15c22.ngrok-free.app/api";
+const baseUrl = "https://3b204becc1ac.ngrok-free.app/api";
 
 export const queryClient = new QueryClient();
 
