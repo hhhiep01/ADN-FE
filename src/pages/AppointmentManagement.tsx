@@ -11,7 +11,7 @@ import {
   type UpdateTestOrderRequest,
 } from "../Services/TestOrderService/UpdateTestOrder";
 import { useDeleteTestOrder } from "../Services/TestOrderService/DeleteTestOrder";
-import { createSample } from "../Services/SampleService/CreateSample";
+import { createSample, type CreateSampleRequest, type Participant } from "../Services/SampleService/CreateSample";
 
 const sampleCollectionMethods = [
   {
@@ -53,6 +53,29 @@ const AppointmentManagement = () => {
   const [showSendKitModal, setShowSendKitModal] = useState(false);
   const [sendKitForm, setSendKitForm] = useState<UpdateTestOrderRequest | null>(null);
   const [sendingKit, setSendingKit] = useState(false);
+
+  // State for sample creation modal
+  const [showSampleModal, setShowSampleModal] = useState(false);
+  const [selectedAppointmentForSample, setSelectedAppointmentForSample] = useState<TestOrderItem | null>(null);
+  const [sampleFormData, setSampleFormData] = useState<CreateSampleRequest>({
+    testOrderId: 0,
+    participants: [
+      {
+        collectionDate: "",
+        sampleStatus: 0,
+        notes: "",
+        participantName: "",
+        relationship: "",
+      },
+      {
+        collectionDate: "",
+        sampleStatus: 0,
+        notes: "",
+        participantName: "",
+        relationship: "",
+      },
+    ],
+  });
 
   // State cho popup gửi kit test
   // Remove all state related to send kit modal
@@ -114,6 +137,19 @@ const AppointmentManagement = () => {
     },
     onError: (err) => {
       alert(`Lỗi cập nhật đơn hẹn: ${err.message}`);
+    },
+  });
+
+  const createSampleMutation = useMutation({
+    mutationFn: createSample,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["testOrders"] });
+      setShowSampleModal(false);
+      setSelectedAppointmentForSample(null);
+      alert("Tạo mẫu xét nghiệm thành công!");
+    },
+    onError: (err) => {
+      alert(`Lỗi tạo mẫu xét nghiệm: ${err.message}`);
     },
   });
 
@@ -261,6 +297,66 @@ const AppointmentManagement = () => {
       );
     }
     return pageNumbers;
+  };
+
+  // Sample modal handlers
+  const handleShowSampleModal = (appointment: TestOrderItem) => {
+    if (appointment.status !== 1) return;
+    if (appointment.sampleMethods.id === 1 && appointment.deliveryKitStatus === 0) {
+      alert("Không thể thêm mẫu xét nghiệm khi kit lấy mẫu chưa được gửi!");
+      return;
+    }
+    
+    setSelectedAppointmentForSample(appointment);
+    setSampleFormData({
+      testOrderId: appointment.id,
+      participants: [
+        {
+          collectionDate: appointment.appointmentDate,
+          sampleStatus: 0,
+          notes: "",
+          participantName: appointment.userName || appointment.fullName || "",
+          relationship: "Chính",
+        },
+        {
+          collectionDate: appointment.appointmentDate,
+          sampleStatus: 0,
+          notes: "",
+          participantName: "",
+          relationship: "",
+        },
+      ],
+    });
+    setShowSampleModal(true);
+  };
+
+  const handleSampleModalClose = () => {
+    setShowSampleModal(false);
+    setSelectedAppointmentForSample(null);
+  };
+
+  const handleSampleFormChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setSampleFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleParticipantChange = (index: number, field: keyof Participant, value: string | number) => {
+    setSampleFormData((prev) => ({
+      ...prev,
+      participants: prev.participants.map((participant, i) =>
+        i === index ? { ...participant, [field]: value } : participant
+      ),
+    }));
+  };
+
+  const handleSampleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createSampleMutation.mutate(sampleFormData);
   };
 
   if (isLoading) {
@@ -435,27 +531,7 @@ const AppointmentManagement = () => {
                   <button
                     className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={appointment.status !== 1}
-                    onClick={async () => {
-                      if (appointment.status !== 1) return;
-                      if (appointment.sampleMethods.id === 1 && appointment.deliveryKitStatus === 0) {
-                        alert("Không thể thêm mẫu xét nghiệm khi kit lấy mẫu chưa được gửi!");
-                        return;
-                      }
-                      try {
-                        await createSample({
-                          testOrderId: appointment.id,
-                          collectionDate: appointment.appointmentDate,
-                          receivedDate: "",
-                          sampleStatus: 0,
-                          notes: "Tạo từ quản lý đơn hẹn",
-                          shippingProvider: "",
-                          trackingNumber: "",
-                        });
-                        alert("Tạo mẫu xét nghiệm thành công!");
-                      } catch (err) {
-                        alert("Tạo mẫu xét nghiệm thất bại!");
-                      }
-                    }}
+                    onClick={() => handleShowSampleModal(appointment)}
                   >
                     Thêm mẫu xét nghiệm
                   </button>
@@ -735,6 +811,122 @@ const AppointmentManagement = () => {
                 {sendingKit ? "Đang gửi..." : "Xác nhận gửi kit test"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sample Creation Modal */}
+      {showSampleModal && selectedAppointmentForSample && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-semibold mb-4">Thêm mẫu xét nghiệm</h3>
+            <form onSubmit={handleSampleFormSubmit}>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mã đơn hẹn
+                </label>
+                <input
+                  type="number"
+                  name="testOrderId"
+                  value={sampleFormData.testOrderId}
+                  onChange={handleSampleFormChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled
+                />
+              </div>
+
+              <div className="mb-6">
+                <h4 className="text-lg font-medium text-gray-800 mb-4">Thông tin người tham gia</h4>
+                {sampleFormData.participants.map((participant, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 mb-4">
+                    <h5 className="text-md font-medium text-gray-700 mb-3">
+                      Người tham gia {index + 1}
+                    </h5>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Tên người tham gia
+                        </label>
+                        <input
+                          type="text"
+                          value={participant.participantName}
+                          onChange={(e) => handleParticipantChange(index, "participantName", e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Nhập tên người tham gia"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Mối quan hệ
+                        </label>
+                        <input
+                          type="text"
+                          value={participant.relationship}
+                          onChange={(e) => handleParticipantChange(index, "relationship", e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Ví dụ: Chính, Con, Vợ/Chồng..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Ngày lấy mẫu
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={participant.collectionDate.slice(0, 16)}
+                          onChange={(e) => handleParticipantChange(index, "collectionDate", e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Trạng thái mẫu
+                        </label>
+                        <select
+                          value={participant.sampleStatus}
+                          onChange={(e) => handleParticipantChange(index, "sampleStatus", Number(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value={0}>Chờ xử lý</option>
+                          <option value={1}>Đang xử lý</option>
+                          <option value={2}>Hoàn thành</option>
+                          <option value={3}>Đã hủy</option>
+                        </select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Ghi chú
+                        </label>
+                        <textarea
+                          value={participant.notes}
+                          onChange={(e) => handleParticipantChange(index, "notes", e.target.value)}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Nhập ghi chú cho người tham gia này"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleSampleModalClose}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={createSampleMutation.isPending}
+                >
+                  {createSampleMutation.isPending ? "Đang tạo..." : "Tạo mẫu xét nghiệm"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

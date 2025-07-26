@@ -18,11 +18,64 @@ import {
 import {
   createSample,
   type CreateSampleRequest,
+  type Participant,
 } from "../Services/SampleService/CreateSample";
+import {
+  getSampleByTestOrder,
+  type SampleByTestOrderItem,
+  type GetSampleByTestOrderResponse,
+} from "../Services/SampleService/GetSampleByTestOrder";
+import {
+  createLocusResult,
+  type CreateLocusResultRequest,
+  type LocusAllele,
+} from "../Services/LocusResultService/CreateLocusResult";
+import { getLocusResultById, type GetLocusResultByIdResponse } from "../Services/LocusResultService/GetLocusResultById";
+import { getLocusResultBySampleId, type GetLocusResultBySampleIdResponse } from "../Services/LocusResultService/GetLocusResultBySampleId";
+import { updateLocusResult } from "../Services/LocusResultService/UpdateLocusResult";
+
+function useHasLocus(sampleId: number) {
+  const { data } = useQuery({
+    queryKey: ["locusBySample", sampleId],
+    queryFn: () => getLocusResultBySampleId({ sampleId }),
+    enabled: !!sampleId,
+  });
+  return data && Array.isArray(data.result) && data.result.length > 0;
+}
+
+function LocusActionCell({ sample, handleShowLocusModal, handleShowLocusDetail, handleShowUpdateLocusModal }: { sample: any, handleShowLocusModal: (sample: any) => void, handleShowLocusDetail: (id: number) => void, handleShowUpdateLocusModal: (sample: any) => void }) {
+  const hasLocus = useHasLocus(sample.id);
+  return (
+    <>
+      {!hasLocus ? (
+        <button
+          onClick={() => handleShowLocusModal(sample)}
+          className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 mr-2"
+        >
+          Thêm Locus
+        </button>
+      ) : (
+        <button
+          onClick={() => handleShowUpdateLocusModal(sample)}
+          className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 mr-2"
+        >
+          Cập nhật Locus
+        </button>
+      )}
+      <button
+        onClick={() => handleShowLocusDetail(sample.id)}
+        className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+      >
+        Xem chi tiết Locus
+      </button>
+    </>
+  );
+}
 
 const SampleManagement = () => {
   const [selectedStatus, setSelectedStatus] = useState<number | "all">("all");
   const [selectedResult, setSelectedResult] = useState<SampleItem | null>(null);
+  const [selectedTestOrderId, setSelectedTestOrderId] = useState<number | null>(null);
   const [updateFormData, setUpdateFormData] = useState<UpdateResultRequest>({
     id: 0,
     sampleId: 0,
@@ -56,25 +109,60 @@ const SampleManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createFormData, setCreateFormData] = useState<CreateSampleRequest>({
     testOrderId: 0,
-    collectionDate: "",
-    receivedDate: "",
-    sampleStatus: 0,
-    notes: "",
-    shippingProvider: "",
-    trackingNumber: "",
+    participants: [
+      {
+        collectionDate: "",
+        sampleStatus: 1,
+        notes: "",
+        participantName: "",
+        relationship: "",
+      },
+    ],
   });
 
-  // 1. Thêm các state và hook cho chức năng thêm kết quả xét nghiệm
-  const [showAddResultModal, setShowAddResultModal] = useState(false);
-  const [addResultFormData, setAddResultFormData] = useState({
+  // Locus Result states
+  const [showLocusModal, setShowLocusModal] = useState(false);
+  const [selectedSampleForLocus, setSelectedSampleForLocus] = useState<SampleItem | null>(null);
+  const [locusFormData, setLocusFormData] = useState<CreateLocusResultRequest>({
     sampleId: 0,
-    resultDate: "",
-    conclusion: "",
-    filePath: "",
+    locusAlleles: [
+      { locusName: "D3S1358", firstAllele: "", secondAllele: "" },
+      { locusName: "VWA", firstAllele: "", secondAllele: "" },
+      { locusName: "FGA", firstAllele: "", secondAllele: "" },
+      { locusName: "TH01", firstAllele: "", secondAllele: "" },
+      { locusName: "D8S1179", firstAllele: "", secondAllele: "" },
+    ],
   });
-  const [selectedAddResultFile, setSelectedAddResultFile] = useState<File | null>(null);
-  const [isAddResultUploading, setIsAddResultUploading] = useState(false);
-  const [uploadedAddResultFilePath, setUploadedAddResultFilePath] = useState<string | null>(null);
+  const [isUpdateLocus, setIsUpdateLocus] = useState(false);
+
+  // Locus Detail states
+  const [showLocusDetailModal, setShowLocusDetailModal] = useState(false);
+  const [locusDetailSampleId, setLocusDetailSampleId] = useState<number | null>(null);
+  const [locusDetailData, setLocusDetailData] = useState<GetLocusResultBySampleIdResponse | null>(null);
+  const [isLoadingLocusDetail, setIsLoadingLocusDetail] = useState(false);
+  const [locusDetailError, setLocusDetailError] = useState<string | null>(null);
+
+  const handleShowLocusDetail = async (sampleId: number) => {
+    setShowLocusDetailModal(true);
+    setLocusDetailSampleId(sampleId);
+    setIsLoadingLocusDetail(true);
+    setLocusDetailError(null);
+    try {
+      const data = await getLocusResultBySampleId({ sampleId });
+      setLocusDetailData(data);
+    } catch (err: any) {
+      setLocusDetailError(err.message || "Lỗi khi lấy chi tiết locus");
+    } finally {
+      setIsLoadingLocusDetail(false);
+    }
+  };
+
+  const handleCloseLocusDetailModal = () => {
+    setShowLocusDetailModal(false);
+    setLocusDetailSampleId(null);
+    setLocusDetailData(null);
+    setLocusDetailError(null);
+  };
 
   const queryClient = useQueryClient();
 
@@ -85,6 +173,22 @@ const SampleManagement = () => {
         signal,
         sampleStatus: selectedStatus,
       }),
+  });
+
+  // Query để lấy samples theo testOrderId
+  const {
+    data: samplesByTestOrder,
+    isLoading: isLoadingSamplesByTestOrder,
+    isError: isErrorSamplesByTestOrder,
+    error: errorSamplesByTestOrder,
+  } = useQuery<GetSampleByTestOrderResponse>({
+    queryKey: ["samplesByTestOrder", selectedTestOrderId],
+    queryFn: ({ signal }) =>
+      getSampleByTestOrder({
+        signal,
+        testOrderId: selectedTestOrderId!,
+      }),
+    enabled: !!selectedTestOrderId, // Chỉ chạy khi có selectedTestOrderId
   });
 
   const deleteSampleMutation = useMutation({
@@ -129,12 +233,15 @@ const SampleManagement = () => {
       setShowCreateModal(false);
       setCreateFormData({
         testOrderId: 0,
-        collectionDate: "",
-        receivedDate: "",
-        sampleStatus: 0,
-        notes: "",
-        shippingProvider: "",
-        trackingNumber: "",
+        participants: [
+          {
+            collectionDate: "",
+            sampleStatus: 1,
+            notes: "",
+            participantName: "",
+            relationship: "",
+          },
+        ],
       });
       alert("Tạo mẫu mới thành công!");
     },
@@ -143,22 +250,21 @@ const SampleManagement = () => {
     },
   });
 
-  const { mutate: createResultMutation, isPending: isCreatingResult } = useMutation({
-    mutationFn: async (payload: any) => {
-      const { createResult } = await import("../Services/ResultService/CreateResult");
-      return createResult(payload);
-    },
+  const createLocusResultMutation = useMutation({
+    mutationFn: createLocusResult,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["samples"] });
-      setShowAddResultModal(false);
-      alert("Thêm kết quả mới thành công!");
+      setShowLocusModal(false);
+      setSelectedSampleForLocus(null);
+      alert("Thêm locus result thành công!");
     },
-    onError: (err: any) => {
-      alert(err.message || "Lỗi thêm kết quả mới!");
+    onError: (err) => {
+      alert(`Lỗi thêm locus result: ${err.message}`);
     },
   });
 
   const samples = data?.result || [];
+  const samplesByTestOrderData = samplesByTestOrder?.result || [];
 
   if (isLoading) {
     return (
@@ -343,12 +449,15 @@ const SampleManagement = () => {
     setShowCreateModal(true);
     setCreateFormData({
       testOrderId: 0,
-      collectionDate: "",
-      receivedDate: "",
-      sampleStatus: 0,
-      notes: "",
-      shippingProvider: "",
-      trackingNumber: "",
+      participants: [
+        {
+          collectionDate: "",
+          sampleStatus: 1,
+          notes: "",
+          participantName: "",
+          relationship: "",
+        },
+      ],
     });
   };
 
@@ -364,11 +473,7 @@ const SampleManagement = () => {
     const { name, value } = e.target;
     setCreateFormData((prev) => ({
       ...prev,
-      [name]:
-        name === "testOrderId" ||
-        name === "sampleStatus"
-          ? Number(value)
-          : value,
+      [name]: name === "testOrderId" ? Number(value) : value,
     }));
   };
 
@@ -377,93 +482,90 @@ const SampleManagement = () => {
     createSampleMutation.mutate(createFormData);
   };
 
-  // 2. Thêm các hàm xử lý
-  const handleShowAddResultModal = (sample: SampleItem) => {
-    // Ngày lấy mẫu + 7 ngày
-    const collectionDate = new Date(sample.collectionDate);
-    const resultDate = new Date(collectionDate);
-    resultDate.setDate(collectionDate.getDate() + 7);
-    setAddResultFormData({
+  // Locus Result handlers
+  const handleShowLocusModal = (sample: SampleItem) => {
+    setSelectedSampleForLocus(sample);
+    setLocusFormData({
       sampleId: sample.id,
-      resultDate: resultDate.toISOString().split("T")[0],
-      conclusion: "",
-      filePath: "",
+      locusAlleles: [
+        { locusName: "D3S1358", firstAllele: "", secondAllele: "" },
+        { locusName: "VWA", firstAllele: "", secondAllele: "" },
+        { locusName: "FGA", firstAllele: "", secondAllele: "" },
+        { locusName: "TH01", firstAllele: "", secondAllele: "" },
+        { locusName: "D8S1179", firstAllele: "", secondAllele: "" },
+      ],
     });
-    setSelectedAddResultFile(null);
-    setUploadedAddResultFilePath(null);
-    setShowAddResultModal(true);
+    setShowLocusModal(true);
   };
 
-  const handleAddResultModalClose = () => {
-    setShowAddResultModal(false);
-    setSelectedAddResultFile(null);
-    setUploadedAddResultFilePath(null);
+  const handleShowUpdateLocusModal = async (sample: SampleItem) => {
+    setSelectedSampleForLocus(sample);
+    setIsUpdateLocus(true);
+    // Lấy dữ liệu locus hiện tại
+    const data = await getLocusResultBySampleId({ sampleId: sample.id });
+    setLocusFormData({
+      sampleId: sample.id,
+      locusAlleles: data.result.map((locus: any) => ({
+        locusName: locus.locusName,
+        firstAllele: locus.firstAllele,
+        secondAllele: locus.secondAllele,
+      })),
+    });
+    setShowLocusModal(true);
   };
 
-  const handleAddResultFormChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setAddResultFormData((prevData) => ({
-      ...prevData,
-      [name]: name === "sampleId" ? Number(value) : value,
+  const handleLocusModalClose = () => {
+    setShowLocusModal(false);
+    setSelectedSampleForLocus(null);
+    setIsUpdateLocus(false);
+  };
+
+  const handleLocusFormChange = (index: number, field: 'firstAllele' | 'secondAllele', value: string) => {
+    setLocusFormData(prev => ({
+      ...prev,
+      locusAlleles: prev.locusAlleles.map((locus, i) => 
+        i === index ? { ...locus, [field]: value } : locus
+      ),
     }));
   };
 
-  const handleAddResultFileUpload = async () => {
-    if (!selectedAddResultFile) return;
-    setIsAddResultUploading(true);
-    try {
-      const url = await uploadPdfToCloudinary(selectedAddResultFile);
-      setUploadedAddResultFilePath(url);
-      setAddResultFormData((prev) => ({ ...prev, filePath: url }));
-      alert("Tải lên tệp thành công!");
-    } catch (err: any) {
-      alert(`Lỗi tải lên tệp: ${err.message}`);
-    } finally {
-      setIsAddResultUploading(false);
-    }
-  };
-
-  const handleAddResultFormSubmit = (e: React.FormEvent) => {
+  const handleLocusFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Lấy ngày lấy mẫu của sample hiện tại
-    const sample = samples.find(s => s.id === addResultFormData.sampleId);
-    if (!sample) {
-      alert("Không tìm thấy mẫu xét nghiệm!");
+    // Kiểm tra xem có ít nhất một locus được nhập đầy đủ
+    const hasValidLocus = locusFormData.locusAlleles.some(
+      locus => locus.firstAllele.trim() !== "" && locus.secondAllele.trim() !== ""
+    );
+    
+    if (!hasValidLocus) {
+      alert("Vui lòng nhập ít nhất một locus với đầy đủ thông tin!");
       return;
     }
-    const collectionDate = new Date(sample.collectionDate);
-    const resultDate = new Date(addResultFormData.resultDate);
-    if (resultDate < collectionDate) {
-      alert("Ngày kết quả không được nhỏ hơn ngày lấy mẫu!");
-      return;
-    }
-    if (!uploadedAddResultFilePath) {
-      alert("Vui lòng tải lên file trước khi thêm kết quả!");
-      return;
-    }
-    createResultMutation({
-      ...addResultFormData,
-      filePath: uploadedAddResultFilePath,
-    });
-  };
 
-  // Enum trạng thái gửi kit
-  const DeliveryKitStatus = {
-    NotSent: 0,
-    Sent: 1,
-    SentBack: 2,
-    Received: 3,
-  };
+    // Lọc ra các locus có đầy đủ thông tin
+    const validLocusAlleles = locusFormData.locusAlleles.filter(
+      locus => locus.firstAllele.trim() !== "" && locus.secondAllele.trim() !== ""
+    );
 
-  // Hàm xử lý cập nhật trạng thái gửi kit
-  const handleUpdateKitStatus = (sampleId: number, newStatus: number) => {
-    // Gọi mutation hoặc API cập nhật trạng thái gửi kit cho mẫu
-    // Ví dụ:
-    // updateSampleKitStatus({ id: sampleId, deliveryKitStatus: newStatus })
-    //   .then(() => queryClient.invalidateQueries({ queryKey: ["samples"] }));
-    alert(`Cập nhật trạng thái kit cho mẫu ${sampleId} sang trạng thái ${newStatus}`);
+    const payload = {
+      ...locusFormData,
+      locusAlleles: validLocusAlleles,
+    };
+
+    if (isUpdateLocus) {
+      // Gọi update
+      try {
+        await updateLocusResult(locusFormData.sampleId, payload);
+        queryClient.invalidateQueries({ queryKey: ["samples"] });
+        setShowLocusModal(false);
+        setSelectedSampleForLocus(null);
+        setIsUpdateLocus(false);
+        alert("Cập nhật locus result thành công!");
+      } catch (err: any) {
+        alert(err.message || "Lỗi cập nhật locus result!");
+      }
+    } else {
+      createLocusResultMutation.mutate(payload);
+    }
   };
 
   return (
@@ -490,12 +592,30 @@ const SampleManagement = () => {
               <option value={2}>Hoàn thành</option>
               <option value={3}>Đã hủy</option>
             </select>
-            <button
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              onClick={handleCreateModalOpen}
-            >
-              Thêm mẫu mới
-            </button>
+            <div className="flex items-center space-x-2">
+              <input
+                type="number"
+                placeholder="Nhập ID đơn hẹn"
+                className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={selectedTestOrderId || ""}
+                onChange={(e) => setSelectedTestOrderId(e.target.value ? Number(e.target.value) : null)}
+              />
+              <button
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                onClick={() => setSelectedTestOrderId(selectedTestOrderId)}
+                disabled={!selectedTestOrderId}
+              >
+                Tìm theo đơn hẹn
+              </button>
+              {selectedTestOrderId && (
+                <button
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                  onClick={() => setSelectedTestOrderId(null)}
+                >
+                  Xóa bộ lọc
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -505,6 +625,9 @@ const SampleManagement = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                ID
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Mã mẫu xét nghiệm
               </th>
@@ -533,7 +656,10 @@ const SampleManagement = () => {
                 Mã vận đơn
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Thêm kết quả xét nghiệm
+                Thông tin người tham gia
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Thêm Locus
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Thao tác
@@ -541,83 +667,179 @@ const SampleManagement = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {samples.map((sample: SampleItem) => {
-              return (
-                <tr key={sample.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {sample.id}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {sample.testOrder.id}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {sample.testOrder.serviceName}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {new Date(sample.collectionDate).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {sample.collectorName}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {getSampleStatusText(sample.sampleStatus)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{sample.notes}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{sample.shippingProvider}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{sample.trackingNumber}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {!sample.result ? (
+            {/* Hiển thị samples theo testOrderId nếu có */}
+            {selectedTestOrderId && samplesByTestOrderData.length > 0 ? (
+              samplesByTestOrderData.map((sample: SampleByTestOrderItem) => {
+                return (
+                  <tr key={sample.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{sample.id}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {sample.sampleCode}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {sample.testOrder.id}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {sample.testOrder.serviceName}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {new Date(sample.collectionDate).toLocaleDateString()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {sample.collectorName}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {getSampleStatusText(sample.sampleStatus)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{sample.notes}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{sample.shippingProvider}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{sample.trackingNumber}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        <div>Người tham gia: {sample.participantName}</div>
+                        <div>Mối quan hệ: {sample.relationship}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <LocusActionCell
+                        sample={sample}
+                        handleShowLocusModal={handleShowLocusModal}
+                        handleShowLocusDetail={handleShowLocusDetail}
+                        handleShowUpdateLocusModal={handleShowUpdateLocusModal}
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => handleShowAddResultModal(sample)}
-                        className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                        onClick={() => handleDeleteSample(sample.id)}
+                        className="text-red-600 hover:text-red-900"
+                        disabled={deleteSampleMutation.isPending}
                       >
-                        Thêm kết quả xét nghiệm
+                        Xóa
                       </button>
-                    ) : (
+                    </td>
+                  </tr>
+                );
+              })
+            ) : selectedTestOrderId && isLoadingSamplesByTestOrder ? (
+              <tr>
+                <td colSpan={12} className="px-6 py-4 text-center text-gray-600">
+                  Đang tải dữ liệu theo đơn hẹn...
+                </td>
+              </tr>
+            ) : selectedTestOrderId && isErrorSamplesByTestOrder ? (
+              <tr>
+                <td colSpan={12} className="px-6 py-4 text-center text-red-600">
+                  Lỗi: {errorSamplesByTestOrder?.message || "Không tìm thấy mẫu cho đơn hẹn này"}
+                </td>
+              </tr>
+            ) : selectedTestOrderId && samplesByTestOrderData.length === 0 ? (
+              <tr>
+                <td colSpan={12} className="px-6 py-4 text-center text-gray-600">
+                  Không tìm thấy mẫu nào cho đơn hẹn {selectedTestOrderId}
+                </td>
+              </tr>
+            ) : (
+              // Hiển thị tất cả samples nếu không có filter
+              samples.map((sample: SampleItem) => {
+                return (
+                  <tr key={sample.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{sample.id}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {sample.id}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {sample.testOrder.id}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {sample.testOrder.serviceName}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {new Date(sample.collectionDate).toLocaleDateString()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {sample.collectorName}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {getSampleStatusText(sample.sampleStatus)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{sample.notes}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{sample.shippingProvider}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{sample.trackingNumber}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {sample.participants && sample.participants.length > 0 ? (
+                          sample.participants.map((participant, index) => (
+                            <div key={index}>
+                              <div>Người tham gia: {participant.participantName}</div>
+                              <div>Mối quan hệ: {participant.relationship}</div>
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-gray-400">Không có thông tin</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <LocusActionCell
+                        sample={sample}
+                        handleShowLocusModal={handleShowLocusModal}
+                        handleShowLocusDetail={handleShowLocusDetail}
+                        handleShowUpdateLocusModal={handleShowUpdateLocusModal}
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        className="px-3 py-1 bg-gray-400 text-white rounded cursor-not-allowed"
-                        disabled
+                        onClick={() => handleDeleteSample(sample.id)}
+                        className="text-red-600 hover:text-red-900"
+                        disabled={deleteSampleMutation.isPending}
                       >
-                        Đã có kết quả
+                        Xóa
                       </button>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleSampleEdit(sample)}
-                      className="text-green-600 hover:text-green-900 mr-3"
-                    >
-                      Cập nhật
-                    </button>
-                    <button
-                      onClick={() => handleDeleteSample(sample.id)}
-                      className="text-red-600 hover:text-red-900"
-                      disabled={deleteSampleMutation.isPending}
-                    >
-                      Xóa
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -883,74 +1105,14 @@ const SampleManagement = () => {
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
                 </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="createCollectionDate"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Ngày lấy mẫu
-                  </label>
-                  <input
-                    type="datetime-local"
-                    id="createCollectionDate"
-                    name="collectionDate"
-                    value={createFormData.collectionDate.slice(0, 16)}
-                    onChange={handleCreateFormChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="createReceivedDate"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Ngày nhận mẫu
-                  </label>
-                  <input
-                    type="datetime-local"
-                    id="createReceivedDate"
-                    name="receivedDate"
-                    value={createFormData.receivedDate.slice(0, 16)}
-                    onChange={handleCreateFormChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="createSampleStatus"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Trạng thái mẫu
-                  </label>
-                  <select
-                    id="createSampleStatus"
-                    name="sampleStatus"
-                    value={createFormData.sampleStatus}
-                    onChange={handleCreateFormChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  >
-                    <option value={0}>Chờ xử lý</option>
-                    <option value={1}>Đang xử lý</option>
-                    <option value={2}>Hoàn thành</option>
-                    <option value={3}>Đã hủy</option>
-                  </select>
-                </div>
               </div>
               <div className="mb-4">
-                <label
-                  htmlFor="createNotes"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Ghi chú
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Thông tin người tham gia
                 </label>
-                <textarea
-                  id="createNotes"
-                  name="notes"
-                  rows={3}
-                  value={createFormData.notes}
-                  onChange={handleCreateFormChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                ></textarea>
+                <div className="text-sm text-gray-500">
+                  Vui lòng sử dụng chức năng "Thêm mẫu xét nghiệm" từ trang Quản lý đơn hẹn để thêm thông tin người tham gia.
+                </div>
               </div>
               <div className="flex justify-end space-x-3">
                 <button
@@ -973,96 +1135,112 @@ const SampleManagement = () => {
         </div>
       )}
 
-      {/* Add Result Modal */}
-      {showAddResultModal && (
+      {/* Locus Result Modal */}
+      {showLocusModal && selectedSampleForLocus && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
-          <div className="bg-white p-8 rounded-lg shadow-xl w-1/3">
-            <h3 className="text-lg font-semibold mb-4">Thêm kết quả mới</h3>
-            <form onSubmit={handleAddResultFormSubmit}>
+          <div className="bg-white p-8 rounded-lg shadow-xl w-3/4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">Thêm Locus Result cho mẫu {selectedSampleForLocus.id}</h3>
+            <form onSubmit={handleLocusFormSubmit}>
               <div className="mb-4">
-                <label htmlFor="addResultSampleId" className="block text-sm font-medium text-gray-700">Mã mẫu xét nghiệm</label>
-                <input
-                  type="number"
-                  id="addResultSampleId"
-                  name="sampleId"
-                  value={addResultFormData.sampleId}
-                  onChange={handleAddResultFormChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-100 text-gray-500 cursor-not-allowed"
-                  disabled
-                />
+                <p className="text-sm text-gray-600 mb-4">
+                  Nhập thông tin allele cho từng locus. Chỉ những locus có đầy đủ thông tin sẽ được gửi.
+                </p>
               </div>
-              <div className="mb-4">
-                <label htmlFor="addResultDate" className="block text-sm font-medium text-gray-700">Ngày kết quả</label>
-                <input
-                  type="date"
-                  id="addResultDate"
-                  name="resultDate"
-                  value={addResultFormData.resultDate}
-                  onChange={handleAddResultFormChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  min={(() => {
-                    const sample = samples.find(s => s.id === addResultFormData.sampleId);
-                    if (!sample) return undefined;
-                    return new Date(sample.collectionDate).toISOString().split("T")[0];
-                  })()}
-                />
+              
+              <div className="space-y-4">
+                {locusFormData.locusAlleles.map((locus, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 mb-3">{locus.locusName}</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          First Allele
+                        </label>
+                        <input
+                          type="text"
+                          value={locus.firstAllele}
+                          onChange={(e) => handleLocusFormChange(index, 'firstAllele', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          placeholder="VD: 15"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Second Allele
+                        </label>
+                        <input
+                          type="text"
+                          value={locus.secondAllele}
+                          onChange={(e) => handleLocusFormChange(index, 'secondAllele', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          placeholder="VD: 17"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="mb-4">
-                <label htmlFor="addResultConclusion" className="block text-sm font-medium text-gray-700">Kết luận</label>
-                <textarea
-                  id="addResultConclusion"
-                  name="conclusion"
-                  rows={3}
-                  value={addResultFormData.conclusion}
-                  onChange={handleAddResultFormChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                ></textarea>
-              </div>
-              <div className="mb-4">
-                <label htmlFor="addResultFilePath" className="block text-sm font-medium text-gray-700">Đường dẫn tệp</label>
-                <input
-                  type="file"
-                  id="addResultFilePath"
-                  name="filePath"
-                  onChange={(e) => setSelectedAddResultFile(e.target.files ? e.target.files[0] : null)}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-                {uploadedAddResultFilePath && (
-                  <a
-                    href={uploadedAddResultFilePath}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline mt-2 inline-block"
-                  >
-                    📄 Xem file đã tải lên
-                  </a>
-                )}
+
+              <div className="flex justify-end space-x-3 mt-6">
                 <button
                   type="button"
-                  onClick={handleAddResultFileUpload}
-                  disabled={!selectedAddResultFile || isAddResultUploading}
-                  className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {isAddResultUploading ? "Đang tải..." : "Tải lên file"}
-                </button>
-              </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={handleAddResultModalClose}
+                  onClick={handleLocusModalClose}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  disabled={isCreatingResult || isAddResultUploading}
+                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                  disabled={createLocusResultMutation.isPending}
                 >
-                  Thêm
+                  {createLocusResultMutation.isPending ? "Đang thêm..." : "Thêm Locus Result"}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Locus Detail Modal */}
+      {showLocusDetailModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl w-2/3 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">Chi tiết Locus cho sample ID {locusDetailSampleId}</h3>
+            {isLoadingLocusDetail ? (
+              <div className="text-center py-8 text-gray-600">Đang tải dữ liệu...</div>
+            ) : locusDetailError ? (
+              <div className="text-center py-8 text-red-600">{locusDetailError}</div>
+            ) : locusDetailData && locusDetailData.result.length > 0 ? (
+              <table className="min-w-full divide-y divide-gray-200 mb-4">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Locus</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Allele</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Second Allele</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {locusDetailData.result.map((locus: any, idx: number) => (
+                    <tr key={locus.id || idx}>
+                      <td className="px-4 py-2">{locus.locusName}</td>
+                      <td className="px-4 py-2">{locus.firstAllele}</td>
+                      <td className="px-4 py-2">{locus.secondAllele}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-center py-8 text-gray-500">Không có dữ liệu locus cho sample này.</div>
+            )}
+            <div className="flex justify-end">
+              <button
+                onClick={handleCloseLocusDetailModal}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       )}

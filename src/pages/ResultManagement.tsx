@@ -1,29 +1,110 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  getAllResults,
-  type GetAllResultsResponse,
-  type ResultItem,
-} from "../Services/ResultService/GetAllResults";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { deleteResult } from "../Services/ResultService/DeleteResult";
-import {
-  updateResult,
-  type UpdateResultRequest,
-} from "../Services/ResultService/UpdateResult";
-import {
-  createResult,
-  type CreateResultRequest,
-} from "../Services/ResultService/CreateResult";
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getAllResults, type GetAllResultsResponse, type ResultItem } from '../Services/ResultService/GetAllResults';
+import { createResult, type CreateResultRequest } from '../Services/ResultService/CreateResult';
+import { updateResult, type UpdateResultRequest } from '../Services/ResultService/UpdateResult';
+import { deleteResult } from '../Services/ResultService/DeleteResult';
+import { getTestOrderById } from '../Services/TestOrderService/GetTestOrderById';
+import { uploadFile } from '../Services/FileService/UploadFile';
+import { downloadAndOpenFile } from '../Services/FileService/DownloadFile';
+import { apiLinks } from '../Services/MainService';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
+function AdnReportPreview({ data }: { data: any }) {
+  if (!data) return null;
+  // Chuẩn hóa dữ liệu
+  const samples = data.samples || [];
+  // Lấy danh sách locus duy nhất, theo thứ tự xuất hiện ở mẫu đầu tiên (nếu có)
+  let locusNames: string[] = [];
+  if (samples.length > 0) {
+    locusNames = samples[0].locusResults.map((l: any) => l.locusName);
+  }
+  // Map locusName -> { [sampleCode]: {firstAllele, secondAllele} }
+  const locusTable: Record<string, Record<string, {firstAllele: string, secondAllele: string}>> = {};
+  locusNames.forEach(locus => {
+    locusTable[locus] = {};
+    samples.forEach(sample => {
+      const found = (sample.locusResults || []).find((l: any) => l.locusName === locus);
+      locusTable[locus][sample.sampleCode] = found ? { firstAllele: found.firstAllele, secondAllele: found.secondAllele } : { firstAllele: "-", secondAllele: "-" };
+    });
+  });
+  return (
+    <div className="text-sm text-gray-900">
+      <h2 className="text-xl font-bold mb-2 text-center">Mẫu báo cáo xét nghiệm ADN huyết thống</h2>
+      <div className="mb-2">
+        <div className="font-semibold">TRUNG TÂM XÉT NGHIỆM DI TRUYỀN GENETICLAB</div>
+        <div>Địa chỉ: 123 Đường ABC, Quận 1, TP.HCM</div>
+        <div>Hotline: 1900 123 456 | Website: www.geneticlab.vn</div>
+      </div>
+      <div className="mb-2">
+        <div className="font-semibold">PHIẾU KẾT QUẢ XÉT NGHIỆM ADN HUYẾT THỐNG</div>
+        <div>Ngày xét nghiệm: {data.appointmentDate ? new Date(data.appointmentDate).toLocaleDateString() : "-"}</div>
+      </div>
+      <div className="mb-2">
+        <div className="font-semibold">Thông tin mẫu xét nghiệm:</div>
+        <table className="w-full border mb-2">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border px-2 py-1">Mẫu</th>
+              <th className="border px-2 py-1">Mã mẫu</th>
+              <th className="border px-2 py-1">Người gửi mẫu</th>
+              <th className="border px-2 py-1">Mối quan hệ</th>
+              <th className="border px-2 py-1">Ngày lấy mẫu</th>
+            </tr>
+          </thead>
+          <tbody>
+            {samples.map((s: any, idx: number) => (
+              <tr key={idx}>
+                <td className="border px-2 py-1">Mẫu {idx + 1}</td>
+                <td className="border px-2 py-1">{s.sampleCode || "-"}</td>
+                <td className="border px-2 py-1">{s.participantName || "-"}</td>
+                <td className="border px-2 py-1">{s.relationship || "-"}</td>
+                <td className="border px-2 py-1">{s.collectionDate ? new Date(s.collectionDate).toLocaleDateString() : "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mb-2">
+        <div className="font-semibold">Kết quả phân tích locus và allele:</div>
+        <table className="w-full border mb-2">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border px-2 py-1">STT</th>
+              <th className="border px-2 py-1">Locus</th>
+              {samples.map((s: any, idx: number) => (
+                <th key={idx} className="border px-2 py-1">{s.sampleCode || `Mẫu ${idx + 1}`}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {locusNames.map((locus, idx) => (
+              <tr key={locus}>
+                <td className="border px-2 py-1">{idx + 1}</td>
+                <td className="border px-2 py-1">{locus}</td>
+                {samples.map((s: any, sidx: number) => (
+                  <td key={sidx} className="border px-2 py-1">{locusTable[locus][s.sampleCode].firstAllele}, {locusTable[locus][s.sampleCode].secondAllele}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mb-2">
+        <div className="font-semibold">Kết luận:</div>
+        <div>{data.conclusion || "-"}</div>
+      </div>
+    </div>
+  );
+}
 
 const ResultManagement = () => {
   const queryClient = useQueryClient();
 
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedResult, setSelectedResult] = useState<ResultItem | null>(null);
-  const [updateFormData, setUpdateFormData] = useState<
-    Omit<UpdateResultRequest, "id" | "sampleId">
-  >({
+  const [selectedResult, setSelectedResult] = useState<any | null>(null);
+  const [updateFormData, setUpdateFormData] = useState({
     resultDate: "",
     conclusion: "",
     filePath: "",
@@ -37,8 +118,8 @@ const ResultManagement = () => {
   >(null);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createFormData, setCreateFormData] = useState<CreateResultRequest>({
-    sampleId: 0,
+  const [createFormData, setCreateFormData] = useState({
+    testOrderId: 0,
     resultDate: "",
     conclusion: "",
     filePath: "",
@@ -51,7 +132,13 @@ const ResultManagement = () => {
     string | null
   >(null);
 
-  const { data, isLoading, isError, error } = useQuery<GetAllResultsResponse>({
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportTestOrderId, setExportTestOrderId] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+  const [testOrderPreview, setTestOrderPreview] = useState<any>(null);
+  const [isChecking, setIsChecking] = useState(false);
+
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["results"],
     queryFn: ({ signal }) => getAllResults({ signal }),
   });
@@ -113,7 +200,7 @@ const ResultManagement = () => {
       queryClient.invalidateQueries({ queryKey: ["results"] });
       setShowCreateModal(false);
       setCreateFormData({
-        sampleId: 0,
+        testOrderId: 0,
         resultDate: "",
         conclusion: "",
         filePath: "",
@@ -127,16 +214,78 @@ const ResultManagement = () => {
 
   const results = data?.result || [];
 
+  const uploadPdfFile = async (file: File): Promise<string> => {
+    // Kiểm tra file
+    if (!file) {
+      throw new Error("Không có file được chọn");
+    }
+
+    // Kiểm tra loại file
+    if (file.type !== "application/pdf") {
+      throw new Error("Chỉ chấp nhận file PDF");
+    }
+
+    // Kiểm tra kích thước file (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new Error("File quá lớn. Kích thước tối đa là 10MB");
+    }
+
+    try {
+      // Thử upload lên backend trước
+      console.log("Trying backend upload...");
+      return await uploadToBackend(file);
+    } catch (backendError) {
+      console.error("Backend upload failed:", backendError);
+      
+      // Fallback: Thử Cloudinary
+      try {
+        console.log("Trying Cloudinary upload...");
+        return await uploadPdfToCloudinary(file);
+      } catch (cloudinaryError) {
+        console.error("Cloudinary upload failed:", cloudinaryError);
+        
+        // Fallback cuối cùng: Local storage
+        console.log("Using local storage fallback...");
+        return await uploadToLocalStorage(file);
+      }
+    }
+  };
+
+  // Upload to backend API
+  const uploadToBackend = async (file: File): Promise<string> => {
+    try {
+      console.log("Uploading to backend API...");
+      const response = await uploadFile(file);
+      
+      if (response.fileName && response.path) {
+        console.log("Backend upload successful:", response);
+        // Tạo URL download từ fileName
+        return apiLinks.Files.download(response.fileName);
+      } else {
+        throw new Error("Upload failed - invalid response");
+      }
+    } catch (error) {
+      console.error("Backend upload error:", error);
+      throw error;
+    }
+  };
+
+  // Upload to Cloudinary (fallback)
   const uploadPdfToCloudinary = async (file: File): Promise<string> => {
-    const CLOUDINARY_CLOUD_NAME = "dku0qdaan"; // Replace with your Cloudinary cloud name
-    const CLOUDINARY_UPLOAD_PRESET = "ADN_SWP"; // Replace with your Cloudinary upload preset
+    const CLOUDINARY_CLOUD_NAME = "dku0qdaan";
+    const CLOUDINARY_UPLOAD_PRESET = "ADN_SWP";
 
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    formData.append("resource_type", "raw");
+    formData.append("public_id", `pdf_${Date.now()}_${file.name.replace('.pdf', '')}`);
+    formData.append("access_mode", "public");
+    formData.append("invalidate", "1");
 
     const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/raw/upload`,
       {
         method: "POST",
         body: formData,
@@ -145,11 +294,112 @@ const ResultManagement = () => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error.message || "Cloudinary upload failed");
+      throw new Error(errorData.error?.message || "Cloudinary upload failed");
     }
 
     const data = await response.json();
     return data.secure_url;
+  };
+
+  // Extract fileName from URL
+  const extractFileNameFromUrl = (url: string): string => {
+    try {
+      // Nếu là URL backend
+      if (url.includes('/api/Files/download/')) {
+        return url.split('/api/Files/download/')[1];
+      }
+      
+      // Nếu là URL Cloudinary
+      if (url.includes('cloudinary.com')) {
+        const parts = url.split('/');
+        const fileName = parts[parts.length - 1];
+        return fileName || 'unknown.pdf';
+      }
+      
+      // Nếu là data URL
+      if (url.startsWith('data:')) {
+        return `file_${Date.now()}.pdf`;
+      }
+      
+      return 'unknown.pdf';
+    } catch (error) {
+      return 'unknown.pdf';
+    }
+  };
+
+  // Download file from URL using DownloadFile.ts API
+  const downloadFileFromUrl = async (url: string, resultId: number) => {
+    try {
+      // Nếu là URL backend
+      if (url.includes('/api/Files/download/')) {
+        const fileName = extractFileNameFromUrl(url);
+        console.log("Downloading file using DownloadFile.ts API:", fileName);
+        
+        // Gọi API DownloadFile.ts
+        await downloadAndOpenFile(fileName, `result-${resultId}.pdf`);
+        console.log("File downloaded successfully using DownloadFile.ts API");
+        return;
+      }
+      
+      // Nếu là URL Cloudinary hoặc data URL
+      console.log("Downloading file from external URL:", url);
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Không thể tải file');
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `result-${resultId}.pdf`;
+      link.target = '_blank';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      console.log("File downloaded successfully from external URL");
+    } catch (error) {
+      console.error("Download file error:", error);
+      alert("Không thể tải xuống file");
+    }
+  };
+
+  // Fallback: Upload to local storage
+  const uploadToLocalStorage = async (file: File): Promise<string> => {
+    try {
+      // Tạo URL cho file
+      const fileUrl = URL.createObjectURL(file);
+      
+      // Lưu file vào localStorage (chỉ cho demo, không khuyến khích cho production)
+      const reader = new FileReader();
+      return new Promise((resolve, reject) => {
+        reader.onload = () => {
+          try {
+            // Tạo unique ID cho file
+            const fileId = `pdf_${Date.now()}_${file.name}`;
+            
+            // Lưu file data vào localStorage
+            localStorage.setItem(fileId, reader.result as string);
+            
+            // Trả về URL có thể truy cập
+            const localUrl = `data:application/pdf;base64,${btoa(reader.result as string)}`;
+            console.log("File saved to local storage:", fileId);
+            resolve(localUrl);
+          } catch (err) {
+            reject(new Error("Không thể lưu file vào local storage"));
+          }
+        };
+        reader.onerror = () => reject(new Error("Không thể đọc file"));
+        reader.readAsDataURL(file);
+      });
+    } catch (error) {
+      console.error("Local storage upload error:", error);
+      throw new Error("Không thể upload file");
+    }
   };
 
   if (isLoading) {
@@ -172,7 +422,9 @@ const ResultManagement = () => {
     }
   };
 
-  const handleUpdateClick = (result: ResultItem) => {
+
+
+  const handleUpdateClick = (result: any) => {
     setSelectedResult(result);
     setUpdateFormData({
       resultDate: result.resultDate,
@@ -202,14 +454,56 @@ const ResultManagement = () => {
   };
 
   const handleUpdateFileUpload = async (file: File) => {
+    // Kiểm tra file
+    if (!file) {
+      alert("Không có file được chọn");
+      return;
+    }
+
+    // Kiểm tra loại file
+    if (file.type !== "application/pdf") {
+      alert("Chỉ chấp nhận file PDF");
+      return;
+    }
+
+    // Kiểm tra kích thước file (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert("File quá lớn. Kích thước tối đa là 10MB");
+      return;
+    }
+
     setIsUpdatingUploading(true);
     try {
-      const url = await uploadPdfToCloudinary(file);
-      setUploadedUpdateFilePath(url);
-      setUpdateFormData((prev) => ({ ...prev, filePath: url }));
-      alert("Tải lên tệp thành công!");
+      // Gọi trực tiếp API UploadFile.ts
+      console.log("Calling UploadFile.ts API for update...");
+      const response = await uploadFile(file);
+      
+      if (response.fileName && response.path) {
+        console.log("UploadFile.ts API successful for update:", response);
+        // Tạo URL download từ fileName
+        const downloadUrl = apiLinks.Files.download(response.fileName);
+        
+        setUploadedUpdateFilePath(downloadUrl);
+        setUpdateFormData((prev) => ({ ...prev, filePath: downloadUrl }));
+        alert("Tải lên tệp thành công!");
+      } else {
+        throw new Error("Upload failed - invalid response");
+      }
     } catch (err: any) {
-      alert(`Lỗi tải lên tệp: ${err.message}`);
+      console.error("UploadFile.ts API error for update:", err);
+      
+      // Fallback: Thử Cloudinary nếu backend API thất bại
+      try {
+        console.log("Backend API failed for update, trying Cloudinary fallback...");
+        const cloudinaryUrl = await uploadPdfToCloudinary(file);
+        setUploadedUpdateFilePath(cloudinaryUrl);
+        setUpdateFormData((prev) => ({ ...prev, filePath: cloudinaryUrl }));
+        alert("Tải lên tệp thành công (Cloudinary)!");
+      } catch (cloudinaryErr: any) {
+        console.error("Cloudinary fallback also failed for update:", cloudinaryErr);
+        alert(`Lỗi tải lên tệp: ${err.message}`);
+      }
     } finally {
       setIsUpdatingUploading(false);
     }
@@ -220,9 +514,9 @@ const ResultManagement = () => {
     if (!selectedResult || !uploadedUpdateFilePath) return;
 
     try {
-      const payload: UpdateResultRequest = {
+      const payload = {
         id: selectedResult.id,
-        sampleId: selectedResult.sampleId,
+        testOrderId: selectedResult.testOrderId,
         resultDate: updateFormData.resultDate,
         conclusion: updateFormData.conclusion,
         filePath: uploadedUpdateFilePath,
@@ -235,7 +529,7 @@ const ResultManagement = () => {
 
   const handleCreateClick = () => {
     setCreateFormData({
-      sampleId: 0,
+      testOrderId: 0,
       resultDate: "",
       conclusion: "",
       filePath: "",
@@ -257,22 +551,69 @@ const ResultManagement = () => {
     const { name, value } = e.target;
     setCreateFormData((prevData) => ({
       ...prevData,
-      [name]: name === "sampleId" ? Number(value) : value,
+      [name]: name === "testOrderId" ? Number(value) : value,
     }));
   };
 
   const handleCreateFileUpload = async (file: File) => {
     console.log("Starting file upload for create form", file);
+    console.log("File details:", {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified
+    });
+    
+    // Kiểm tra file
+    if (!file) {
+      alert("Không có file được chọn");
+      return;
+    }
+
+    // Kiểm tra loại file
+    if (file.type !== "application/pdf") {
+      alert("Chỉ chấp nhận file PDF");
+      return;
+    }
+
+    // Kiểm tra kích thước file (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert("File quá lớn. Kích thước tối đa là 10MB");
+      return;
+    }
+    
     setIsCreatingUploading(true);
     try {
-      const url = await uploadPdfToCloudinary(file);
-      console.log("File uploaded successfully:", url);
-      setUploadedCreateFilePath(url);
-      setCreateFormData((prev) => ({ ...prev, filePath: url }));
-      alert("Tải lên tệp thành công!");
+      // Gọi trực tiếp API UploadFile.ts
+      console.log("Calling UploadFile.ts API...");
+      const response = await uploadFile(file);
+      
+      if (response.fileName && response.path) {
+        console.log("UploadFile.ts API successful:", response);
+        // Tạo URL download từ fileName
+        const downloadUrl = apiLinks.Files.download(response.fileName);
+        
+        setUploadedCreateFilePath(downloadUrl);
+        setCreateFormData((prev) => ({ ...prev, filePath: downloadUrl }));
+        alert("Tải lên tệp thành công!");
+      } else {
+        throw new Error("Upload failed - invalid response");
+      }
     } catch (err: any) {
-      console.error("File upload error:", err);
-      alert(`Lỗi tải lên tệp: ${err.message}`);
+      console.error("UploadFile.ts API error:", err);
+      
+      // Fallback: Thử Cloudinary nếu backend API thất bại
+      try {
+        console.log("Backend API failed, trying Cloudinary fallback...");
+        const cloudinaryUrl = await uploadPdfToCloudinary(file);
+        setUploadedCreateFilePath(cloudinaryUrl);
+        setCreateFormData((prev) => ({ ...prev, filePath: cloudinaryUrl }));
+        alert("Tải lên tệp thành công (Cloudinary)!");
+      } catch (cloudinaryErr: any) {
+        console.error("Cloudinary fallback also failed:", cloudinaryErr);
+        alert(`Lỗi tải lên tệp: ${err.message}`);
+      }
     } finally {
       setIsCreatingUploading(false);
     }
@@ -288,7 +629,7 @@ const ResultManagement = () => {
     }
 
     try {
-      const payload: CreateResultRequest = {
+      const payload: any = {
         ...createFormData,
         filePath: uploadedCreateFilePath,
       };
@@ -300,6 +641,183 @@ const ResultManagement = () => {
     }
   };
 
+  const handleExportPDF = () => {
+    setShowExportModal(true);
+  };
+
+  const handleExportModalClose = () => {
+    setShowExportModal(false);
+    setExportTestOrderId("");
+  };
+
+  const handleExportConfirm = async () => {
+    if (!testOrderPreview) return;
+    
+    setIsExporting(true);
+    try {
+      // Tạo một div ẩn để render nội dung PDF
+      const pdfContent = document.createElement('div');
+      pdfContent.style.position = 'absolute';
+      pdfContent.style.left = '-9999px';
+      pdfContent.style.width = '800px';
+      pdfContent.style.padding = '20px';
+      pdfContent.style.fontSize = '12px';
+      pdfContent.style.fontFamily = 'Arial, sans-serif';
+      pdfContent.style.backgroundColor = 'white';
+      pdfContent.style.color = 'black';
+      
+      // Tạo nội dung HTML cho PDF
+      const samples = testOrderPreview.samples || [];
+      let locusNames: string[] = [];
+      if (samples.length > 0) {
+        locusNames = samples[0].locusResults.map((l: any) => l.locusName);
+      }
+      
+      const locusTable: Record<string, Record<string, {firstAllele: string, secondAllele: string}>> = {};
+      locusNames.forEach(locus => {
+        locusTable[locus] = {};
+        samples.forEach((sample: any) => {
+          const found = (sample.locusResults || []).find((l: any) => l.locusName === locus);
+          locusTable[locus][sample.sampleCode] = found ? { firstAllele: found.firstAllele, secondAllele: found.secondAllele } : { firstAllele: "-", secondAllele: "-" };
+        });
+      });
+
+      pdfContent.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h1 style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">MẪU BÁO CÁO XÉT NGHIỆM ADN HUYẾT THỐNG</h1>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <div style="font-weight: bold; margin-bottom: 5px;">TRUNG TÂM XÉT NGHIỆM DI TRUYỀN GENETICLAB</div>
+          <div>Địa chỉ: 123 Đường ABC, Quận 1, TP.HCM</div>
+          <div>Hotline: 1900 123 456 | Website: www.geneticlab.vn</div>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <div style="font-weight: bold; margin-bottom: 5px;">PHIẾU KẾT QUẢ XÉT NGHIỆM ADN HUYẾT THỐNG</div>
+          <div>Ngày xét nghiệm: ${testOrderPreview.appointmentDate ? new Date(testOrderPreview.appointmentDate).toLocaleDateString() : "-"}</div>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <div style="font-weight: bold; margin-bottom: 5px;">Thông tin mẫu xét nghiệm:</div>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+            <thead>
+              <tr style="background-color: #f3f4f6;">
+                <th style="border: 1px solid #000; padding: 5px; text-align: center;">Mẫu</th>
+                <th style="border: 1px solid #000; padding: 5px; text-align: center;">Mã mẫu</th>
+                <th style="border: 1px solid #000; padding: 5px; text-align: center;">Người gửi mẫu</th>
+                <th style="border: 1px solid #000; padding: 5px; text-align: center;">Mối quan hệ</th>
+                <th style="border: 1px solid #000; padding: 5px; text-align: center;">Ngày lấy mẫu</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${samples.map((s: any, idx: number) => `
+                <tr>
+                  <td style="border: 1px solid #000; padding: 5px; text-align: center;">Mẫu ${idx + 1}</td>
+                  <td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.sampleCode || "-"}</td>
+                  <td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.participantName || "-"}</td>
+                  <td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.relationship || "-"}</td>
+                  <td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.collectionDate ? new Date(s.collectionDate).toLocaleDateString() : "-"}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <div style="font-weight: bold; margin-bottom: 5px;">Kết quả phân tích locus và allele:</div>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+            <thead>
+              <tr style="background-color: #f3f4f6;">
+                <th style="border: 1px solid #000; padding: 5px; text-align: center;">STT</th>
+                <th style="border: 1px solid #000; padding: 5px; text-align: center;">Locus</th>
+                ${samples.map((s: any, idx: number) => `
+                  <th style="border: 1px solid #000; padding: 5px; text-align: center;">${s.sampleCode || `Mẫu ${idx + 1}`}</th>
+                `).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${locusNames.map((locus, idx) => `
+                <tr>
+                  <td style="border: 1px solid #000; padding: 5px; text-align: center;">${idx + 1}</td>
+                  <td style="border: 1px solid #000; padding: 5px; text-align: center;">${locus}</td>
+                  ${samples.map((s: any) => `
+                    <td style="border: 1px solid #000; padding: 5px; text-align: center;">${locusTable[locus][s.sampleCode].firstAllele}, ${locusTable[locus][s.sampleCode].secondAllele}</td>
+                  `).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <div style="font-weight: bold; margin-bottom: 5px;">Kết luận:</div>
+          <div>${testOrderPreview.conclusion || "-"}</div>
+        </div>
+      `;
+      
+      document.body.appendChild(pdfContent);
+      
+      // Chuyển đổi HTML thành canvas
+      const canvas = await html2canvas(pdfContent, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+      
+      // Tạo PDF
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      // Tải xuống PDF
+      pdf.save(`bao-cao-adn-${testOrderPreview.id}.pdf`);
+      
+      // Xóa div tạm
+      document.body.removeChild(pdfContent);
+      
+      alert('PDF đã được xuất thành công!');
+      handleExportModalClose();
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Có lỗi xảy ra khi xuất PDF');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleCheckTestOrder = async () => {
+    if (!exportTestOrderId) {
+      alert("Vui lòng nhập ID đơn hẹn!");
+      return;
+    }
+    setIsChecking(true);
+    setTestOrderPreview(null);
+    try {
+      const data = await getTestOrderById(Number(exportTestOrderId));
+      setTestOrderPreview(data.result);
+    } catch (err: any) {
+      setTestOrderPreview({ error: err.message || "Không tìm thấy dữ liệu!" });
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow">
       {/* Header */}
@@ -308,6 +826,89 @@ const ResultManagement = () => {
           <h2 className="text-xl font-semibold text-gray-800">
             Quản lý kết quả xét nghiệm
           </h2>
+          <div className="flex space-x-3">
+            <button
+              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+              onClick={handleExportPDF}
+            >
+              Xuất file PDF
+            </button>
+            <button
+              className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+              onClick={async () => {
+                // Test tất cả URL trong bảng
+                const testResults = await Promise.all(
+                  results.map(async (result) => {
+                    if (result.filePath && result.filePath.startsWith('http')) {
+                      try {
+                        const response = await fetch(result.filePath, { method: 'HEAD' });
+                        return {
+                          id: result.id,
+                          url: result.filePath,
+                          status: response.status,
+                          ok: response.ok
+                        };
+                      } catch (error: any) {
+                        return {
+                          id: result.id,
+                          url: result.filePath,
+                          status: 'ERROR',
+                          ok: false,
+                          error: error.message
+                        };
+                      }
+                    }
+                    return null;
+                  })
+                );
+                
+                const failedUrls = testResults.filter(r => r && !r.ok);
+                if (failedUrls.length > 0) {
+                  console.log("Failed URLs:", failedUrls);
+                  
+                  // Hỏi người dùng có muốn xóa các kết quả bị lỗi không
+                  const confirmDelete = window.confirm(
+                    `Phát hiện ${failedUrls.length} URL không thể truy cập.\n\nBạn có muốn xóa các kết quả này để tránh lỗi không?`
+                  );
+                  
+                  if (confirmDelete) {
+                    failedUrls.forEach(result => {
+                      if (result) {
+                        deleteResultMutation.mutate(result.id);
+                      }
+                    });
+                    alert("Đã xóa các kết quả bị lỗi!");
+                  }
+                } else {
+                  alert("Tất cả URL đều có thể truy cập được!");
+                }
+              }}
+            >
+              🔍 Test & Fix URLs
+            </button>
+            <button
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+              onClick={async () => {
+                // Test DownloadFile.ts API với file mẫu
+                try {
+                  console.log("Testing DownloadFile.ts API...");
+                  await downloadAndOpenFile("bao-cao-adn-48.pdf", "test-download.pdf");
+                  alert("Test DownloadFile.ts API thành công!");
+                } catch (error: any) {
+                  console.error("DownloadFile.ts API test failed:", error);
+                  alert(`Test DownloadFile.ts API thất bại: ${error.message}`);
+                }
+              }}
+            >
+              🧪 Test Download API
+            </button>
+            <button
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              onClick={handleCreateClick}
+            >
+              Tạo kết quả xét nghiệm
+            </button>
+          </div>
         </div>
       </div>
 
@@ -320,7 +921,7 @@ const ResultManagement = () => {
                 Mã kết quả
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Mã mẫu xét nghiệm
+                Mã đơn hẹn
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Ngày kết quả
@@ -343,7 +944,7 @@ const ResultManagement = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {results.map((result: ResultItem) => (
+            {results.map((result: any) => (
               <tr key={result.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">
@@ -351,7 +952,7 @@ const ResultManagement = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{result.sampleId}</div>
+                  <div className="text-sm text-gray-900">{result.testOrderId}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
@@ -374,7 +975,37 @@ const ResultManagement = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{result.filePath}</div>
+                  <div className="text-sm text-gray-900">
+                    {result.filePath && result.filePath.startsWith("http") ? (
+                      <div className="flex space-x-2">
+                        <a
+                          href={result.filePath}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline"
+                        >
+                          📄 Xem file
+                        </a>
+                        <button
+                          onClick={async () => {
+                            try {
+                              console.log(`Downloading file for result ${result.id}:`, result.filePath);
+                              await downloadFileFromUrl(result.filePath, result.id);
+                              console.log(`Download completed for result ${result.id}`);
+                            } catch (error: any) {
+                              console.error(`Download failed for result ${result.id}:`, error);
+                              alert(`Lỗi tải xuống file: ${error.message}`);
+                            }
+                          }}
+                          className="text-green-600 hover:text-green-800 underline text-xs"
+                        >
+                          ⬇️ Tải xuống
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-gray-500">{result.filePath || "Không có file"}</span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button
@@ -450,11 +1081,29 @@ const ResultManagement = () => {
                   type="file"
                   id="filePath"
                   name="filePath"
-                  onChange={(e) =>
-                    setSelectedUpdateFile(
-                      e.target.files ? e.target.files[0] : null
-                    )
-                  }
+                  accept=".pdf"
+                  onChange={(e) => {
+                    const file = e.target.files ? e.target.files[0] : null;
+                    if (file) {
+                      // Kiểm tra loại file
+                      if (file.type !== "application/pdf") {
+                        alert("Chỉ chấp nhận file PDF! Vui lòng chọn file PDF.");
+                        e.target.value = "";
+                        setSelectedUpdateFile(null);
+                        return;
+                      }
+                      
+                      // Kiểm tra kích thước file (max 10MB)
+                      const maxSize = 10 * 1024 * 1024; // 10MB
+                      if (file.size > maxSize) {
+                        alert("File quá lớn! Kích thước tối đa là 10MB.");
+                        e.target.value = "";
+                        setSelectedUpdateFile(null);
+                        return;
+                      }
+                    }
+                    setSelectedUpdateFile(file);
+                  }}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
                 {updateFormData.filePath &&
@@ -508,16 +1157,16 @@ const ResultManagement = () => {
             <form onSubmit={handleCreateFormSubmit}>
               <div className="mb-4">
                 <label
-                  htmlFor="sampleId"
+                  htmlFor="testOrderId"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Mã mẫu xét nghiệm
+                  Mã đơn hẹn
                 </label>
                 <input
                   type="number"
-                  id="sampleId"
-                  name="sampleId"
-                  value={createFormData.sampleId}
+                  id="testOrderId"
+                  name="testOrderId"
+                  value={createFormData.testOrderId}
                   onChange={handleCreateFormChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
@@ -565,11 +1214,29 @@ const ResultManagement = () => {
                   type="file"
                   id="createFilePath"
                   name="filePath"
-                  onChange={(e) =>
-                    setSelectedCreateFile(
-                      e.target.files ? e.target.files[0] : null
-                    )
-                  }
+                  accept=".pdf"
+                  onChange={(e) => {
+                    const file = e.target.files ? e.target.files[0] : null;
+                    if (file) {
+                      // Kiểm tra loại file
+                      if (file.type !== "application/pdf") {
+                        alert("Chỉ chấp nhận file PDF! Vui lòng chọn file PDF.");
+                        e.target.value = "";
+                        setSelectedCreateFile(null);
+                        return;
+                      }
+                      
+                      // Kiểm tra kích thước file (max 10MB)
+                      const maxSize = 10 * 1024 * 1024; // 10MB
+                      if (file.size > maxSize) {
+                        alert("File quá lớn! Kích thước tối đa là 10MB.");
+                        e.target.value = "";
+                        setSelectedCreateFile(null);
+                        return;
+                      }
+                    }
+                    setSelectedCreateFile(file);
+                  }}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   required
                 />
@@ -611,6 +1278,60 @@ const ResultManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal nhập ID đơn hẹn để xuất PDF */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl w-2/3 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">Nhập ID đơn hẹn để xuất PDF</h3>
+            <div className="flex space-x-2 mb-4">
+              <input
+                type="number"
+                className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+                placeholder="Nhập ID đơn hẹn"
+                value={exportTestOrderId}
+                onChange={e => setExportTestOrderId(e.target.value)}
+                disabled={isExporting || isChecking}
+              />
+              <button
+                type="button"
+                onClick={handleCheckTestOrder}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                disabled={isExporting || isChecking || !exportTestOrderId}
+              >
+                {isChecking ? "Đang kiểm tra..." : "Kiểm tra"}
+              </button>
+            </div>
+            {testOrderPreview && (
+              <div className="mb-4 p-3 bg-gray-50 border rounded text-sm">
+                {testOrderPreview.error ? (
+                  <span className="text-red-600">{testOrderPreview.error}</span>
+                ) : (
+                  <AdnReportPreview data={testOrderPreview} />
+                )}
+              </div>
+            )}
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={handleExportModalClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                disabled={isExporting}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleExportConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                disabled={isExporting || !exportTestOrderId}
+              >
+                {isExporting ? "Đang lấy dữ liệu..." : "Lấy dữ liệu & Xuất PDF"}
+              </button>
+            </div>
           </div>
         </div>
       )}

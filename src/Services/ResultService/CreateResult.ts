@@ -2,7 +2,7 @@ import { apiLinks } from "../MainService";
 import httpClient from "../../httpClient/httpClient";
 
 export interface CreateResultRequest {
-  sampleId: number;
+  testOrderId: number;
   resultDate: string;
   conclusion: string;
   filePath: string;

@@ -3,7 +3,7 @@ import httpClient from "../../httpClient/httpClient";
 
 export interface ResultItem {
   id: number;
-  sampleId: number;
+  testOrderId: number;
   resultDate: string;
   conclusion: string;
   filePath: string;

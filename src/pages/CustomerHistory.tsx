@@ -4,7 +4,7 @@ import { useGetTestOrderByCustomer } from "../Services/TestOrderService/GetTestO
 import type { TestOrderCustomer } from "../Services/TestOrderService/GetTestOrderByCustomer";
 import { updateTestOrderDeliveryStatus } from "../Services/TestOrderService/UpdateTestOrderDeliveryStatus";
 import { useQueryClient } from "@tanstack/react-query";
-import { createSample } from "../Services/SampleService/CreateSample";
+import { createSample, type CreateSampleRequest, type Participant } from "../Services/SampleService/CreateSample";
 
 interface Service {
   id: number;
@@ -46,6 +46,31 @@ const CustomerHistory: React.FC = () => {
   const [showSendSampleModal, setShowSendSampleModal] = React.useState<TestOrderCustomer | null>(null);
   const [shippingProvider, setShippingProvider] = React.useState("");
   const [trackingNumber, setTrackingNumber] = React.useState("");
+
+  // State for sample creation modal
+  const [showSampleModal, setShowSampleModal] = React.useState(false);
+  const [selectedOrderForSample, setSelectedOrderForSample] = React.useState<TestOrderCustomer | null>(null);
+  const [sampleFormData, setSampleFormData] = React.useState<CreateSampleRequest>({
+    testOrderId: 0,
+    shippingProvider: "",
+    trackingNumber: "",
+    participants: [
+      {
+        collectionDate: "",
+        sampleStatus: 0,
+        notes: "",
+        participantName: "",
+        relationship: "",
+      },
+      {
+        collectionDate: "",
+        sampleStatus: 0,
+        notes: "",
+        participantName: "",
+        relationship: "",
+      },
+    ],
+  });
   console.log("API response:", data);
   if (error) {
     console.error("API error:", error);
@@ -117,6 +142,71 @@ const CustomerHistory: React.FC = () => {
     }
   };
 
+  // Sample modal handlers
+  const handleShowSampleModal = (order: TestOrderCustomer) => {
+    setSelectedOrderForSample(order);
+    setSampleFormData({
+      testOrderId: order.id,
+      shippingProvider: "",
+      trackingNumber: "",
+      participants: [
+        {
+          collectionDate: order.appointmentDate,
+          sampleStatus: 0,
+          notes: "",
+          participantName: order.userName || order.fullName || "",
+          relationship: "Chính",
+        },
+        {
+          collectionDate: order.appointmentDate,
+          sampleStatus: 0,
+          notes: "",
+          participantName: "",
+          relationship: "",
+        },
+      ],
+    });
+    setShowSampleModal(true);
+  };
+
+  const handleSampleModalClose = () => {
+    setShowSampleModal(false);
+    setSelectedOrderForSample(null);
+  };
+
+  const handleSampleFormChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setSampleFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleParticipantChange = (index: number, field: keyof Participant, value: string | number) => {
+    setSampleFormData((prev) => ({
+      ...prev,
+      participants: prev.participants.map((participant, i) =>
+        i === index ? { ...participant, [field]: value } : participant
+      ),
+    }));
+  };
+
+  const handleSampleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createSample(sampleFormData);
+      await handleConfirmSentKit(selectedOrderForSample!.id, 2);
+      setShowSampleModal(false);
+      setSelectedOrderForSample(null);
+      alert("Gửi mẫu về trung tâm thành công!");
+      await refetch();
+    } catch (err) {
+      alert("Gửi mẫu về trung tâm thất bại!");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-10 px-2">
       <h2 className="text-3xl font-bold text-blue-700 mb-8 text-center drop-shadow-sm">
@@ -171,7 +261,7 @@ const CustomerHistory: React.FC = () => {
                       {order.sampleMethods?.id === 1 && (order.deliveryKitStatus === 0 || order.deliveryKitStatus === 1 || order.deliveryKitStatus === 3) && (
                         <button
                           className="px-3 py-1 rounded-full bg-blue-500 text-white font-medium hover:bg-blue-600 transition text-xs shadow"
-                          onClick={() => setShowSendSampleModal(order)}
+                          onClick={() => handleShowSampleModal(order)}
                           disabled={order.deliveryKitStatus !== 3}
                         >
                           Gửi mẫu về trung tâm
@@ -193,86 +283,145 @@ const CustomerHistory: React.FC = () => {
           ))}
         </div>
       )}
-      {/* Confirmation popup for sending sample to center */}
-      {showSendSampleModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-2 animate-fadeIn">
-            <h3 className="text-2xl font-bold mb-6 text-center text-blue-700 tracking-wide">Xác nhận gửi mẫu về trung tâm</h3>
-            <div className="space-y-4">
-              <div className="flex flex-col">
-                <label className="font-semibold text-gray-700 mb-1">Mã đơn hẹn:</label>
-                <div className="bg-gray-100 rounded px-3 py-2 text-gray-800">{showSendSampleModal.id}</div>
+      {/* Sample Creation Modal */}
+      {showSampleModal && selectedOrderForSample && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-semibold mb-4">Mẫu gửi về trung tâm</h3>
+            <form onSubmit={handleSampleFormSubmit}>
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mã đơn hẹn
+                  </label>
+                  <input
+                    type="number"
+                    name="testOrderId"
+                    value={sampleFormData.testOrderId}
+                    onChange={handleSampleFormChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Đơn vị vận chuyển
+                  </label>
+                  <input
+                    type="text"
+                    name="shippingProvider"
+                    value={sampleFormData.shippingProvider}
+                    onChange={handleSampleFormChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nhập đơn vị vận chuyển"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mã vận đơn
+                  </label>
+                  <input
+                    type="text"
+                    name="trackingNumber"
+                    value={sampleFormData.trackingNumber}
+                    onChange={handleSampleFormChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nhập mã vận đơn"
+                  />
+                </div>
               </div>
-              <div className="flex flex-col">
-                <label className="font-semibold text-gray-700 mb-1">Khách hàng</label>
-                <input type="text" className="border rounded-lg px-3 py-2 w-full" value={showSendSampleModal.fullName || showSendSampleModal.userName || ''} disabled />
+
+              <div className="mb-6">
+                <h4 className="text-lg font-medium text-gray-800 mb-4">Thông tin người tham gia</h4>
+                {sampleFormData.participants.map((participant, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 mb-4">
+                    <h5 className="text-md font-medium text-gray-700 mb-3">
+                      Người tham gia {index + 1}
+                    </h5>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Tên người tham gia
+                        </label>
+                        <input
+                          type="text"
+                          value={participant.participantName}
+                          onChange={(e) => handleParticipantChange(index, "participantName", e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Nhập tên người tham gia"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Mối quan hệ
+                        </label>
+                        <input
+                          type="text"
+                          value={participant.relationship}
+                          onChange={(e) => handleParticipantChange(index, "relationship", e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Ví dụ: Chính, Con, Vợ/Chồng..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Ngày lấy mẫu
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={participant.collectionDate.slice(0, 16)}
+                          onChange={(e) => handleParticipantChange(index, "collectionDate", e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Trạng thái mẫu
+                        </label>
+                        <select
+                          value={participant.sampleStatus}
+                          onChange={(e) => handleParticipantChange(index, "sampleStatus", Number(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value={0}>Chờ xử lý</option>
+                          <option value={1}>Đang xử lý</option>
+                          <option value={2}>Hoàn thành</option>
+                          <option value={3}>Đã hủy</option>
+                        </select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Ghi chú
+                        </label>
+                        <textarea
+                          value={participant.notes}
+                          onChange={(e) => handleParticipantChange(index, "notes", e.target.value)}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Nhập ghi chú cho người tham gia này"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex flex-col">
-                <label className="font-semibold text-gray-700 mb-1">Email</label>
-                <input type="email" className="border rounded-lg px-3 py-2 w-full" value={showSendSampleModal.email || ''} disabled />
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleSampleModalClose}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Gửi mẫu về trung tâm
+                </button>
               </div>
-              <div className="flex flex-col">
-                <label className="font-semibold text-gray-700 mb-1">Số điện thoại</label>
-                <input type="tel" className="border rounded-lg px-3 py-2 w-full" value={showSendSampleModal.phoneNumber || ''} disabled />
-              </div>
-              <div className="flex flex-col">
-                <label className="font-semibold text-gray-700 mb-1">Địa điểm hẹn</label>
-                <input type="text" className="border rounded-lg px-3 py-2 w-full" value={showSendSampleModal.appointmentLocation || ''} disabled />
-              </div>
-              <div className="flex flex-col">
-                <label className="font-semibold text-gray-700 mb-1">Ngày hẹn</label>
-                <input type="datetime-local" className="border rounded-lg px-3 py-2 w-full" value={(showSendSampleModal.appointmentDate || '').slice(0,16)} disabled />
-              </div>
-              <div className="flex flex-col">
-                <label className="font-semibold text-gray-700 mb-1">Đơn vị vận chuyển</label>
-                <input
-                  type="text"
-                  className="border rounded-lg px-3 py-2 w-full"
-                  value={shippingProvider}
-                  onChange={e => setShippingProvider(e.target.value)}
-                  placeholder="Nhập tên đơn vị vận chuyển"
-                />
-              </div>
-              <div className="flex flex-col">
-                <label className="font-semibold text-gray-700 mb-1">Mã vận đơn</label>
-                <input
-                  type="text"
-                  className="border rounded-lg px-3 py-2 w-full"
-                  value={trackingNumber}
-                  onChange={e => setTrackingNumber(e.target.value)}
-                  placeholder="Nhập mã vận đơn"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-8">
-              <button
-                onClick={() => setShowSendSampleModal(null)}
-                className="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={async () => {
-                  // Gọi API tạo sample với shippingProvider và trackingNumber
-                  await createSample({
-                    testOrderId: showSendSampleModal.id,
-                    collectionDate: showSendSampleModal.appointmentDate,
-                    receivedDate: "",
-                    sampleStatus: 1,
-                    notes: "Gửi mẫu về trung tâm",
-                    shippingProvider,
-                    trackingNumber,
-                  });
-                  handleConfirmSentKit(showSendSampleModal.id, 2);
-                  setShowSendSampleModal(null);
-                  setShippingProvider("");
-                  setTrackingNumber("");
-                }}
-                className="px-5 py-2 rounded-lg text-white font-semibold bg-gradient-to-r from-blue-500 to-blue-700 shadow hover:from-blue-600 hover:to-blue-800 transition"
-              >
-                Xác nhận gửi mẫu về trung tâm
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       )}

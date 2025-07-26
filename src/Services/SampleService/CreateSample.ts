@@ -1,14 +1,17 @@
 import { apiLinks } from "../MainService";
 import httpClient from "../../httpClient/httpClient";
 
-export interface CreateSampleRequest {
-  testOrderId: number;
+export interface Participant {
   collectionDate: string;
-  receivedDate: string;
   sampleStatus: number;
   notes: string;
-  shippingProvider: string;
-  trackingNumber: string;
+  participantName: string;
+  relationship: string;
+}
+
+export interface CreateSampleRequest {
+  testOrderId: number;
+  participants: Participant[];
 }
 
 export const createSample = async (

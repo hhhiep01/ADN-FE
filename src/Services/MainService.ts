@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-const baseUrl = "https://3b204becc1ac.ngrok-free.app/api";
+const baseUrl = "https://d36ebdea44d6.ngrok-free.app/api";
 
 export const queryClient = new QueryClient();
 
@@ -70,6 +70,18 @@ export const apiLinks = {
     create: `${baseUrl}/Comment`,
     update: `${baseUrl}/Comment`,
     delete: (id: number) => `${baseUrl}/Comment/${id}`,
+  },
+  LocusResult: {
+    getAll: `${baseUrl}/LocusResult`,
+    create: `${baseUrl}/LocusResult`,
+    getById: (id: string) => `${baseUrl}/LocusResult/${id}`,
+    delete: (id: string) => `${baseUrl}/LocusResult/${id}`,
+    getBySampleId: (sampleId: string) => `${baseUrl}/LocusResult/by-sample/${sampleId}`,
+    update: (sampleId: string) => `${baseUrl}/LocusResult/${sampleId}`,
+  },
+  Files: {
+    upload: `${baseUrl}/Files/upload`,
+    download: (fileName: string) => `${baseUrl}/Files/download/${fileName}`,
   },
 };
 

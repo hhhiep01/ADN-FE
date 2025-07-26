@@ -1,6 +1,14 @@
 import { apiLinks } from "../MainService";
 import httpClient from "../../httpClient/httpClient";
 
+export interface Participant {
+  collectionDate: string;
+  sampleStatus: number;
+  notes: string;
+  participantName: string;
+  relationship: string;
+}
+
 export interface TestOrderNested {
   id: number;
   fullName: string;
@@ -24,6 +32,7 @@ export interface SampleMethodNested {
 
 export interface SampleItem {
   id: number;
+  participants?: Participant[];
   collectionDate: string;
   receivedDate: string;
   sampleStatus: number;
