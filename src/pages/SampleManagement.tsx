@@ -33,6 +33,7 @@ import {
 import { getLocusResultById, type GetLocusResultByIdResponse } from "../Services/LocusResultService/GetLocusResultById";
 import { getLocusResultBySampleId, type GetLocusResultBySampleIdResponse } from "../Services/LocusResultService/GetLocusResultBySampleId";
 import { updateLocusResult } from "../Services/LocusResultService/UpdateLocusResult";
+import { useGetAllSampleMethods } from "../Services/SampleMethodService/GetAllSampleMethods";
 
 function useHasLocus(sampleId: number) {
   const { data } = useQuery({
@@ -78,7 +79,7 @@ const SampleManagement = () => {
   const [selectedTestOrderId, setSelectedTestOrderId] = useState<number | null>(null);
   const [updateFormData, setUpdateFormData] = useState<UpdateResultRequest>({
     id: 0,
-    sampleId: 0,
+    testOrderId: 0,
     resultDate: "",
     conclusion: "",
     filePath: "",
@@ -166,6 +167,7 @@ const SampleManagement = () => {
 
   const queryClient = useQueryClient();
 
+  // Gọi API lấy danh sách mẫu xét nghiệm, lọc theo trạng thái
   const { data, isLoading, isError, error } = useQuery<GetAllSamplesResponse>({
     queryKey: ["samples", selectedStatus],
     queryFn: ({ signal }) =>
@@ -191,6 +193,7 @@ const SampleManagement = () => {
     enabled: !!selectedTestOrderId, // Chỉ chạy khi có selectedTestOrderId
   });
 
+  // Mutation xóa mẫu xét nghiệm
   const deleteSampleMutation = useMutation({
     mutationFn: deleteSample,
     onSuccess: () => {
@@ -213,6 +216,7 @@ const SampleManagement = () => {
     },
   });
 
+  // Mutation cập nhật mẫu xét nghiệm
   const updateSampleMutation = useMutation({
     mutationFn: updateSample,
     onSuccess: () => {
@@ -226,6 +230,7 @@ const SampleManagement = () => {
     },
   });
 
+  // Mutation tạo mới mẫu xét nghiệm
   const createSampleMutation = useMutation({
     mutationFn: createSample,
     onSuccess: () => {
@@ -265,6 +270,42 @@ const SampleManagement = () => {
 
   const samples = data?.result || [];
   const samplesByTestOrderData = samplesByTestOrder?.result || [];
+  const { data: sampleMethodsData } = useGetAllSampleMethods();
+  const sampleMethods = sampleMethodsData?.result || [];
+  const [selectedMethod, setSelectedMethod] = useState<number | "all">("all");
+
+  // Xử lý phân trang cho bảng mẫu xét nghiệm
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalItems = samples.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedSamples = samples.slice(startIndex, endIndex);
+
+  // Hàm chuyển trang
+  const handlePageChange = (page: number) => {
+    if (page > 0 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Hàm render các nút số trang
+  const renderPageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`px-3 py-1 border rounded-md ${currentPage === i ? 'bg-blue-600 text-white' : 'hover:bg-gray-50'}`}
+        >
+          {i}
+        </button>
+      );
+    }
+    return pages;
+  };
 
   if (isLoading) {
     return (
@@ -290,7 +331,7 @@ const SampleManagement = () => {
     setSelectedResult(sample);
     setUpdateFormData({
       id: sample.result?.id || 0,
-      sampleId: sample.id,
+      testOrderId: sample.testOrder.id || 0,
       resultDate: sample.result?.resultDate || "",
       conclusion: sample.result?.conclusion || "",
       filePath: sample.result?.filePath || "",
@@ -304,7 +345,7 @@ const SampleManagement = () => {
     setSelectedResult(sample);
     setUpdateFormData({
       id: sample.result?.id || 0,
-      sampleId: sample.id,
+      testOrderId: sample.testOrder.id || 0,
       resultDate: sample.result?.resultDate || "",
       conclusion: sample.result?.conclusion || "",
       filePath: sample.result?.filePath || "",
@@ -317,7 +358,7 @@ const SampleManagement = () => {
     setSelectedResult(null);
     setUpdateFormData({
       id: 0,
-      sampleId: 0,
+      testOrderId: 0,
       resultDate: "",
       conclusion: "",
       filePath: "",
@@ -329,7 +370,7 @@ const SampleManagement = () => {
     setSelectedResult(null);
     setUpdateFormData({
       id: 0,
-      sampleId: 0,
+      testOrderId: 0,
       resultDate: "",
       conclusion: "",
       filePath: "",
@@ -395,7 +436,7 @@ const SampleManagement = () => {
     if (selectedResult) {
       const payload: UpdateResultRequest = {
         id: updateFormData.id,
-        sampleId: updateFormData.sampleId,
+        testOrderId: updateFormData.testOrderId,
         resultDate: updateFormData.resultDate,
         conclusion: updateFormData.conclusion,
         filePath: uploadedUpdateResultFilePath || updateFormData.filePath,
@@ -579,6 +620,22 @@ const SampleManagement = () => {
           <div className="flex space-x-4">
             <select
               className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={selectedMethod}
+              onChange={(e) =>
+                setSelectedMethod(
+                  e.target.value === "all" ? "all" : Number(e.target.value)
+                )
+              }
+            >
+              <option value="all">Tất cả phương thức lấy mẫu</option>
+              {sampleMethods.map((method) => (
+                <option key={method.id} value={method.id}>
+                  {method.name}
+                </option>
+              ))}
+            </select>
+            <select
+              className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={selectedStatus}
               onChange={(e) =>
                 setSelectedStatus(
@@ -600,21 +657,6 @@ const SampleManagement = () => {
                 value={selectedTestOrderId || ""}
                 onChange={(e) => setSelectedTestOrderId(e.target.value ? Number(e.target.value) : null)}
               />
-              <button
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                onClick={() => setSelectedTestOrderId(selectedTestOrderId)}
-                disabled={!selectedTestOrderId}
-              >
-                Tìm theo đơn hẹn
-              </button>
-              {selectedTestOrderId && (
-                <button
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                  onClick={() => setSelectedTestOrderId(null)}
-                >
-                  Xóa bộ lọc
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -760,7 +802,7 @@ const SampleManagement = () => {
               </tr>
             ) : (
               // Hiển thị tất cả samples nếu không có filter
-              samples.map((sample: SampleItem) => {
+              paginatedSamples.map((sample: SampleItem) => {
                 return (
                   <tr key={sample.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -842,6 +884,32 @@ const SampleManagement = () => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Thêm phân trang dưới bảng */}
+      <div className="px-6 py-4 border-t">
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-500">
+            Hiển thị {startIndex + 1} đến {endIndex} của {totalItems} kết quả
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Trước
+            </button>
+            {renderPageNumbers()}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Sau
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Update Result Modal */}

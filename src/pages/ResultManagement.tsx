@@ -170,6 +170,7 @@ const ResultManagement = () => {
     return "Lỗi không xác định";
   };
 
+  // Hàm xử lý xóa kết quả xét nghiệm, gọi mutation xóa và cập nhật lại danh sách
   const deleteResultMutation = useMutation({
     mutationFn: deleteResult,
     onSuccess: () => {
@@ -181,6 +182,7 @@ const ResultManagement = () => {
     },
   });
 
+  // Hàm xử lý cập nhật kết quả xét nghiệm, gọi mutation cập nhật và cập nhật lại danh sách
   const updateResultMutation = useMutation({
     mutationFn: updateResult,
     onSuccess: () => {
@@ -194,6 +196,7 @@ const ResultManagement = () => {
     },
   });
 
+  // Hàm xử lý tạo mới kết quả xét nghiệm
   const createResultMutation = useMutation({
     mutationFn: createResult,
     onSuccess: (data) => {
@@ -453,6 +456,7 @@ const ResultManagement = () => {
     }));
   };
 
+  // Hàm upload file PDF lên server hoặc Cloudinary (nếu backend lỗi)
   const handleUpdateFileUpload = async (file: File) => {
     // Kiểm tra file
     if (!file) {
@@ -509,6 +513,7 @@ const ResultManagement = () => {
     }
   };
 
+  // Hàm submit form cập nhật kết quả
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedResult || !uploadedUpdateFilePath) return;
@@ -834,75 +839,6 @@ const ResultManagement = () => {
               Xuất file PDF
             </button>
             <button
-              className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
-              onClick={async () => {
-                // Test tất cả URL trong bảng
-                const testResults = await Promise.all(
-                  results.map(async (result) => {
-                    if (result.filePath && result.filePath.startsWith('http')) {
-                      try {
-                        const response = await fetch(result.filePath, { method: 'HEAD' });
-                        return {
-                          id: result.id,
-                          url: result.filePath,
-                          status: response.status,
-                          ok: response.ok
-                        };
-                      } catch (error: any) {
-                        return {
-                          id: result.id,
-                          url: result.filePath,
-                          status: 'ERROR',
-                          ok: false,
-                          error: error.message
-                        };
-                      }
-                    }
-                    return null;
-                  })
-                );
-                
-                const failedUrls = testResults.filter(r => r && !r.ok);
-                if (failedUrls.length > 0) {
-                  console.log("Failed URLs:", failedUrls);
-                  
-                  // Hỏi người dùng có muốn xóa các kết quả bị lỗi không
-                  const confirmDelete = window.confirm(
-                    `Phát hiện ${failedUrls.length} URL không thể truy cập.\n\nBạn có muốn xóa các kết quả này để tránh lỗi không?`
-                  );
-                  
-                  if (confirmDelete) {
-                    failedUrls.forEach(result => {
-                      if (result) {
-                        deleteResultMutation.mutate(result.id);
-                      }
-                    });
-                    alert("Đã xóa các kết quả bị lỗi!");
-                  }
-                } else {
-                  alert("Tất cả URL đều có thể truy cập được!");
-                }
-              }}
-            >
-              🔍 Test & Fix URLs
-            </button>
-            <button
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-              onClick={async () => {
-                // Test DownloadFile.ts API với file mẫu
-                try {
-                  console.log("Testing DownloadFile.ts API...");
-                  await downloadAndOpenFile("bao-cao-adn-48.pdf", "test-download.pdf");
-                  alert("Test DownloadFile.ts API thành công!");
-                } catch (error: any) {
-                  console.error("DownloadFile.ts API test failed:", error);
-                  alert(`Test DownloadFile.ts API thất bại: ${error.message}`);
-                }
-              }}
-            >
-              🧪 Test Download API
-            </button>
-            <button
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               onClick={handleCreateClick}
             >
@@ -986,21 +922,6 @@ const ResultManagement = () => {
                         >
                           📄 Xem file
                         </a>
-                        <button
-                          onClick={async () => {
-                            try {
-                              console.log(`Downloading file for result ${result.id}:`, result.filePath);
-                              await downloadFileFromUrl(result.filePath, result.id);
-                              console.log(`Download completed for result ${result.id}`);
-                            } catch (error: any) {
-                              console.error(`Download failed for result ${result.id}:`, error);
-                              alert(`Lỗi tải xuống file: ${error.message}`);
-                            }
-                          }}
-                          className="text-green-600 hover:text-green-800 underline text-xs"
-                        >
-                          ⬇️ Tải xuống
-                        </button>
                       </div>
                     ) : (
                       <span className="text-gray-500">{result.filePath || "Không có file"}</span>

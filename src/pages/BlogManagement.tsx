@@ -37,6 +37,7 @@ const BlogManagement = () => {
   const [isEditingImageUploading, setIsEditingImageUploading] = useState(false);
   const [uploadedEditImageUrl, setUploadedEditImageUrl] = useState<string>("");
 
+  // Hàm upload ảnh lên Cloudinary cho blog
   const uploadImageToCloudinary = async (file: File): Promise<string> => {
     const CLOUDINARY_CLOUD_NAME = "dku0qdaan";
     const CLOUDINARY_UPLOAD_PRESET = "ADN_SWP";
@@ -58,6 +59,7 @@ const BlogManagement = () => {
     return data.secure_url;
   };
 
+  // Hàm lấy danh sách blog từ API
   const fetchBlogs = async () => {
     setLoading(true);
     try {
@@ -75,15 +77,18 @@ const BlogManagement = () => {
     }
   };
 
+  // useEffect gọi fetchBlogs khi component mount
   useEffect(() => {
     fetchBlogs();
   }, []);
 
+  // Hàm mở modal chỉnh sửa blog
   const handleEdit = (blog: BlogItem) => {
     setEditingBlog(blog);
     setIsEditModalOpen(true);
   };
 
+  // Hàm xóa blog
   const handleDelete = async (id: number) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa bài viết này?")) {
       await deleteBlog(id.toString());
@@ -91,6 +96,7 @@ const BlogManagement = () => {
     }
   };
 
+  // Hàm tạo mới blog
   const handleCreateBlog = async () => {
     await createBlog({ ...newBlog, id: 0, image: uploadedCreateImageUrl });
     setIsCreateModalOpen(false);
