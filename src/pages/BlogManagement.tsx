@@ -343,26 +343,36 @@ const BlogManagement = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Tiêu đề
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nội dung
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ảnh
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Thao tác
-              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '30%'}}>Tiêu đề</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '50%'}}>Nội dung</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '12%'}}>Ảnh</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '8%'}}>Thao tác</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {blogs.map((blog) => (
               <tr key={blog.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{blog.title}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{blog.content}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4 whitespace-nowrap" style={{width: '30%'}}>{blog.title}</td>
+                <td
+                  className="px-6 py-4 whitespace-nowrap"
+                  style={{ width: '50%', maxWidth: 0 }}
+                >
+                  <div
+                    style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'normal',
+                      cursor: 'pointer',
+                    }}
+                    title={blog.content}
+                  >
+                    {blog.content}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap" style={{width: '12%'}}>
                   {blog.image ? (
                     <img
                       src={blog.image}
@@ -373,7 +383,7 @@ const BlogManagement = () => {
                     <span className="text-gray-400">Không có ảnh</span>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{width: '8%'}}>
                   <button
                     className="text-blue-600 hover:text-blue-900 mr-3"
                     onClick={() => handleEdit(blog)}
