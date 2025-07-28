@@ -40,6 +40,8 @@ function useHasLocus(sampleId: number) {
     queryKey: ["locusBySample", sampleId],
     queryFn: () => getLocusResultBySampleId({ sampleId }),
     enabled: !!sampleId,
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Luôn fetch lại khi có thay đổi
   });
   return data && Array.isArray(data.result) && data.result.length > 0;
 }
@@ -124,6 +126,7 @@ const SampleManagement = () => {
   // Locus Result states
   const [showLocusModal, setShowLocusModal] = useState(false);
   const [selectedSampleForLocus, setSelectedSampleForLocus] = useState<SampleItem | null>(null);
+  const [locusRefreshKey, setLocusRefreshKey] = useState(0); // Thêm state để force refresh
   const [locusFormData, setLocusFormData] = useState<CreateLocusResultRequest>({
     sampleId: 0,
     locusAlleles: [
@@ -259,6 +262,9 @@ const SampleManagement = () => {
     mutationFn: createLocusResult,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["samples"] });
+      // Thêm invalidate cho locusBySample queries để refresh button state
+      queryClient.invalidateQueries({ queryKey: ["locusBySample"] });
+      setLocusRefreshKey(prev => prev + 1); // Force re-render
       setShowLocusModal(false);
       setSelectedSampleForLocus(null);
       alert("Thêm locus result thành công!");
@@ -597,6 +603,9 @@ const SampleManagement = () => {
       try {
         await updateLocusResult(locusFormData.sampleId, payload);
         queryClient.invalidateQueries({ queryKey: ["samples"] });
+        // Thêm invalidate cho locusBySample queries để refresh button state
+        queryClient.invalidateQueries({ queryKey: ["locusBySample"] });
+        setLocusRefreshKey(prev => prev + 1); // Force re-render
         setShowLocusModal(false);
         setSelectedSampleForLocus(null);
         setIsUpdateLocus(false);
@@ -764,6 +773,7 @@ const SampleManagement = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <LocusActionCell
+                        key={`locus-${sample.id}-${locusRefreshKey}`}
                         sample={sample}
                         handleShowLocusModal={handleShowLocusModal}
                         handleShowLocusDetail={handleShowLocusDetail}
@@ -863,6 +873,7 @@ const SampleManagement = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <LocusActionCell
+                        key={`locus-${sample.id}-${locusRefreshKey}`}
                         sample={sample}
                         handleShowLocusModal={handleShowLocusModal}
                         handleShowLocusDetail={handleShowLocusDetail}
