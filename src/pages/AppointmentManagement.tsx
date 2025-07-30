@@ -12,6 +12,8 @@ import {
 } from "../Services/TestOrderService/UpdateTestOrder";
 import { useDeleteTestOrder } from "../Services/TestOrderService/DeleteTestOrder";
 import { createSample, type CreateSampleRequest, type Participant } from "../Services/SampleService/CreateSample";
+import { useGetAllSampleTypes } from "../Services/SampleTypeService/GetAllSampleTypes";
+import { getSamplesByTestOrderId } from "../Services/SampleService/GetSamplesByTestOrderId";
 
 const sampleCollectionMethods = [
   {
@@ -66,6 +68,8 @@ const AppointmentManagement = () => {
         notes: "",
         participantName: "",
         relationship: "",
+        sampleTypeId: 0,
+        fingerprintImagePath: "",
       },
       {
         collectionDate: "",
@@ -73,21 +77,67 @@ const AppointmentManagement = () => {
         notes: "",
         participantName: "",
         relationship: "",
+        sampleTypeId: 0,
+        fingerprintImagePath: "",
       },
     ],
   });
 
-  // State cho popup gửi kit test
-  // Remove all state related to send kit modal
-  // const [showSendKitModal, setShowSendKitModal] = useState(false);
-  // const [selectedAppointment, setSelectedAppointment] = useState<TestOrderItem | null>(null);
-  // const [isSendingKit, setIsSendingKit] = useState(false);
-  // const [sendKitForm, setSendKitForm] = useState<UpdateTestOrderRequest | null>(null);
-  // const [sendKitDeliveryStatus, setSendKitDeliveryStatus] = useState<number | null>(null);
+  // States for fingerprint image upload
+  const [selectedFingerprintImages, setSelectedFingerprintImages] = useState<{ [key: number]: File | null }>({});
+  const [isFingerprintImageUploading, setIsFingerprintImageUploading] = useState<{ [key: number]: boolean }>({});
+  const [uploadedFingerprintImageUrls, setUploadedFingerprintImageUrls] = useState<{ [key: number]: string }>({});
+
+  // State to track appointments that already have samples
+  const [appointmentsWithSamples, setAppointmentsWithSamples] = useState<Set<number>>(new Set());
+  const [isCheckingSamples, setIsCheckingSamples] = useState<{ [key: number]: boolean }>({});
+
+  // Function to check if an appointment has samples
+  const checkAppointmentSamples = async (appointmentId: number) => {
+    if (isCheckingSamples[appointmentId]) return;
+    
+    setIsCheckingSamples(prev => ({ ...prev, [appointmentId]: true }));
+    try {
+      const response = await getSamplesByTestOrderId(appointmentId.toString());
+      if (response.isSuccess && response.result && response.result.length > 0) {
+        setAppointmentsWithSamples(prev => new Set([...prev, appointmentId]));
+      }
+    } catch (error) {
+      console.error(`Error checking samples for appointment ${appointmentId}:`, error);
+    } finally {
+      setIsCheckingSamples(prev => ({ ...prev, [appointmentId]: false }));
+    }
+  };
+
+  // Hàm upload ảnh vân tay lên Cloudinary
+  const uploadFingerprintImageToCloudinary = async (file: File): Promise<string> => {
+    const CLOUDINARY_CLOUD_NAME = "dku0qdaan";
+    const CLOUDINARY_UPLOAD_PRESET = "ADN_SWP";
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error.message || "Cloudinary upload failed");
+    }
+    const data = await response.json();
+    return data.secure_url;
+  };
 
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError, error } = useQuery({
+  // Sample types query
+  const { data: sampleTypesData, isLoading: isLoadingSampleTypes } = useGetAllSampleTypes();
+  const sampleTypes = sampleTypesData?.result || [];
+
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: [
       "testOrders",
       selectedMethod,
@@ -146,7 +196,13 @@ const AppointmentManagement = () => {
       queryClient.invalidateQueries({ queryKey: ["testOrders"] });
       setShowSampleModal(false);
       setSelectedAppointmentForSample(null);
+      // Add appointment ID to the set of appointments with samples
+      if (selectedAppointmentForSample) {
+        setAppointmentsWithSamples(prev => new Set([...prev, selectedAppointmentForSample.id]));
+      }
       alert("Tạo mẫu xét nghiệm thành công!");
+      // Refresh the appointments list to get updated data
+      refetch();
     },
     onError: (err) => {
       alert(`Lỗi tạo mẫu xét nghiệm: ${err.message}`);
@@ -317,6 +373,8 @@ const AppointmentManagement = () => {
           notes: "",
           participantName: appointment.userName || appointment.fullName || "",
           relationship: "Chính",
+          sampleTypeId: 0,
+          fingerprintImagePath: "",
         },
         {
           collectionDate: appointment.appointmentDate,
@@ -324,15 +382,25 @@ const AppointmentManagement = () => {
           notes: "",
           participantName: "",
           relationship: "",
+          sampleTypeId: 0,
+          fingerprintImagePath: "",
         },
       ],
     });
+    // Reset fingerprint image upload states
+    setSelectedFingerprintImages({});
+    setIsFingerprintImageUploading({});
+    setUploadedFingerprintImageUrls({});
     setShowSampleModal(true);
   };
 
   const handleSampleModalClose = () => {
     setShowSampleModal(false);
     setSelectedAppointmentForSample(null);
+    // Reset fingerprint image upload states
+    setSelectedFingerprintImages({});
+    setIsFingerprintImageUploading({});
+    setUploadedFingerprintImageUrls({});
   };
 
   const handleSampleFormChange = (
@@ -356,6 +424,36 @@ const AppointmentManagement = () => {
 
   const handleSampleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Kiểm tra xem tất cả người tham gia có hình ảnh vân tay chưa
+    const missingFingerprintImages = sampleFormData.participants.filter(
+      (participant, index) => {
+        const hasUploadedImage = uploadedFingerprintImageUrls[index];
+        const hasExistingImage = participant.fingerprintImagePath;
+        return !hasUploadedImage && !hasExistingImage;
+      }
+    );
+
+    if (missingFingerprintImages.length > 0) {
+      alert("⚠️ Bắt buộc phải có hình ảnh vân tay cho tất cả người tham gia trước khi gửi mẫu xét nghiệm!");
+      return;
+    }
+
+    // Kiểm tra các trường bắt buộc khác
+    const requiredFields = sampleFormData.participants.filter(
+      (participant, index) => {
+        return !participant.participantName || 
+               !participant.relationship || 
+               participant.sampleTypeId === 0 ||
+               !participant.collectionDate;
+      }
+    );
+
+    if (requiredFields.length > 0) {
+      alert("⚠️ Vui lòng điền đầy đủ thông tin bắt buộc cho tất cả người tham gia!");
+      return;
+    }
+
     createSampleMutation.mutate(sampleFormData);
   };
 
@@ -530,10 +628,12 @@ const AppointmentManagement = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button
                     className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={appointment.status !== 1}
+                    disabled={appointment.status !== 1 || appointment.sampleMethods.id === 1 || appointmentsWithSamples.has(appointment.id) || isCheckingSamples[appointment.id]}
                     onClick={() => handleShowSampleModal(appointment)}
+                    onMouseEnter={() => checkAppointmentSamples(appointment.id)}
                   >
-                    Thêm mẫu xét nghiệm
+                    {isCheckingSamples[appointment.id] ? "Đang kiểm tra..." : 
+                     appointmentsWithSamples.has(appointment.id) ? "Đã thêm mẫu" : "Thêm mẫu xét nghiệm"}
                   </button>
                   {/* Button gửi kit test - now opens editable modal */}
                   <button
@@ -820,6 +920,16 @@ const AppointmentManagement = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-semibold mb-4">Thêm mẫu xét nghiệm</h3>
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <span className="text-yellow-600">⚠️</span>
+                <span className="text-yellow-800 font-medium">Lưu ý quan trọng:</span>
+              </div>
+              <p className="text-yellow-700 text-sm mt-1">
+                Bắt buộc phải có hình ảnh vân tay cho tất cả người tham gia trước khi gửi mẫu xét nghiệm. 
+                Vui lòng tải lên ảnh vân tay cho từng người tham gia.
+              </p>
+            </div>
             <form onSubmit={handleSampleFormSubmit}>
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -869,6 +979,27 @@ const AppointmentManagement = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Loại mẫu xét nghiệm
+                        </label>
+                        <select
+                          value={participant.sampleTypeId}
+                          onChange={(e) => handleParticipantChange(index, "sampleTypeId", Number(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={isLoadingSampleTypes}
+                        >
+                          <option value={0}>Chọn loại mẫu</option>
+                          {sampleTypes.map((sampleType) => (
+                            <option key={sampleType.id} value={sampleType.id}>
+                              {sampleType.name}
+                            </option>
+                          ))}
+                        </select>
+                        {isLoadingSampleTypes && (
+                          <p className="text-sm text-gray-500 mt-1">Đang tải danh sách loại mẫu...</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
                           Ngày lấy mẫu
                         </label>
                         <input
@@ -882,16 +1013,80 @@ const AppointmentManagement = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Trạng thái mẫu
                         </label>
-                        <select
-                          value={participant.sampleStatus}
-                          onChange={(e) => handleParticipantChange(index, "sampleStatus", Number(e.target.value))}
+                        <input
+                          type="text"
+                          value="Chờ xử lý"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed"
+                          readOnly
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Đường dẫn hình ảnh vân tay <span className="text-red-500">*</span>
+                        </label>
+                        <div className="mb-2">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className="text-xs text-red-600 font-medium">⚠️ Bắt buộc phải có hình ảnh vân tay</span>
+                            {uploadedFingerprintImageUrls[index] || participant.fingerprintImagePath ? (
+                              <span className="text-xs text-green-600 font-medium">✅ Đã tải lên</span>
+                            ) : (
+                              <span className="text-xs text-red-600 font-medium">❌ Chưa tải lên</span>
+                            )}
+                          </div>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files ? e.target.files[0] : null;
+                            setSelectedFingerprintImages(prev => ({
+                              ...prev,
+                              [index]: file
+                            }));
+                          }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        {(uploadedFingerprintImageUrls[index] || participant.fingerprintImagePath) && (
+                          <img
+                            src={uploadedFingerprintImageUrls[index] || participant.fingerprintImagePath}
+                            alt="Fingerprint Preview"
+                            className="mt-2 w-32 h-20 object-cover rounded"
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const file = selectedFingerprintImages[index];
+                            if (file) {
+                              setIsFingerprintImageUploading(prev => ({
+                                ...prev,
+                                [index]: true
+                              }));
+                              try {
+                                const url = await uploadFingerprintImageToCloudinary(file);
+                                setUploadedFingerprintImageUrls(prev => ({
+                                  ...prev,
+                                  [index]: url
+                                }));
+                                handleParticipantChange(index, "fingerprintImagePath", url);
+                                alert("Tải lên ảnh vân tay thành công!");
+                              } catch (err: any) {
+                                alert(`Lỗi tải lên ảnh vân tay: ${err.message}`);
+                              } finally {
+                                setIsFingerprintImageUploading(prev => ({
+                                  ...prev,
+                                  [index]: false
+                                }));
+                              }
+                            } else {
+                              alert("Vui lòng chọn file ảnh trước khi tải lên!");
+                            }
+                          }}
+                          disabled={!selectedFingerprintImages[index] || isFingerprintImageUploading[index]}
+                          className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 text-sm"
                         >
-                          <option value={0}>Chờ xử lý</option>
-                          <option value={1}>Đang xử lý</option>
-                          <option value={2}>Hoàn thành</option>
-                          <option value={3}>Đã hủy</option>
-                        </select>
+                          {isFingerprintImageUploading[index] ? "Đang tải..." : "Tải lên ảnh vân tay"}
+                        </button>
                       </div>
                       <div className="col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -920,10 +1115,21 @@ const AppointmentManagement = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  disabled={createSampleMutation.isPending}
+                  disabled={createSampleMutation.isPending || 
+                    sampleFormData.participants.some((participant, index) => {
+                      const hasUploadedImage = uploadedFingerprintImageUrls[index];
+                      const hasExistingImage = participant.fingerprintImagePath;
+                      return !hasUploadedImage && !hasExistingImage;
+                    })
+                  }
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {createSampleMutation.isPending ? "Đang tạo..." : "Tạo mẫu xét nghiệm"}
+                  {createSampleMutation.isPending ? "Đang tạo..." : 
+                   sampleFormData.participants.some((participant, index) => {
+                     const hasUploadedImage = uploadedFingerprintImageUrls[index];
+                     const hasExistingImage = participant.fingerprintImagePath;
+                     return !hasUploadedImage && !hasExistingImage;
+                   }) ? "Thiếu ảnh vân tay" : "Tạo mẫu xét nghiệm"}
                 </button>
               </div>
             </form>

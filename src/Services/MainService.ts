@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-const baseUrl = "https://576410a88226.ngrok-free.app/api";
+const baseUrl = "https://6d17d53e45d3.ngrok-free.app/api";
 
 export const queryClient = new QueryClient();
 
@@ -26,16 +26,13 @@ export const apiLinks = {
     updateAppointmentStatus: `${baseUrl}/TestOrder/appointment-status`,
   },
   Sample: {
-    // Quản lý mẫu xét nghiệm: lấy, tạo, cập nhật, xóa, lấy theo đơn hẹn hoặc người lấy mẫu
-    getAll: `${baseUrl}/Sample`,
+    // Quản lý mẫu xét nghiệm: tạo, lấy, cập nhật, xóa
     create: `${baseUrl}/Sample`,
+    getAll: `${baseUrl}/Sample`,
     getById: (id: string) => `${baseUrl}/Sample/${id}`,
-    update: `${baseUrl}/Sample`,
+    update: (id: string) => `${baseUrl}/Sample/${id}`,
     delete: (id: string) => `${baseUrl}/Sample/${id}`,
-    getByTestOrderId: (testOrderId: string) =>
-      `${baseUrl}/Sample/test-order/${testOrderId}`,
-    getByCollectorId: (collectorId: string) =>
-      `${baseUrl}/Sample/collector/${collectorId}`,
+    getByTestOrderId: (testOrderId: string) => `${baseUrl}/Sample/test-order/${testOrderId}`,
   },
   Result: {
     // Quản lý kết quả xét nghiệm: lấy, tạo, cập nhật, xóa, lịch sử người dùng
@@ -92,6 +89,19 @@ export const apiLinks = {
     // Upload và download file
     upload: `${baseUrl}/Files/upload`,
     download: (fileName: string) => `${baseUrl}/Files/download/${fileName}`,
+  },
+  Payment: {
+    // Quản lý thanh toán: tạo thanh toán và callback
+    create: `${baseUrl}/Payment`,
+    callback: `${baseUrl}/Payment/callback`,
+  },
+  SampleType: {
+    // Quản lý loại mẫu: lấy, tạo, cập nhật, xóa
+    getAll: `${baseUrl}/SampleType`,
+    create: `${baseUrl}/SampleType`,
+    getById: (id: string) => `${baseUrl}/SampleType/${id}`,
+    update: (id: string) => `${baseUrl}/SampleType/${id}`,
+    delete: (id: string) => `${baseUrl}/SampleType/${id}`,
   },
 };
 

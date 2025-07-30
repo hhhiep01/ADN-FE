@@ -7,6 +7,8 @@ export interface Participant {
   notes: string;
   participantName: string;
   relationship: string;
+  sampleTypeId: number;
+  fingerprintImagePath: string;
 }
 
 export interface CreateSampleRequest {

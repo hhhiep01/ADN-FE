@@ -18,8 +18,10 @@ export interface CreateTestOrderRequest {
 }
 
 export interface CreateTestOrderResponse {
-    message: string;
-    data: TestOrder;
+  statusCode: number;
+  isSuccess: boolean;
+  errorMessage: string | null;
+  result: number; // The created test order ID
 }
 
 const createTestOrder = async (request: CreateTestOrderRequest): Promise<CreateTestOrderResponse> => {

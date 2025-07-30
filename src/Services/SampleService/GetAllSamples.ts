@@ -7,6 +7,8 @@ export interface Participant {
   notes: string;
   participantName: string;
   relationship: string;
+  sampleTypeId: number;
+  fingerprintImagePath: string;
 }
 
 export interface TestOrderNested {
@@ -30,6 +32,21 @@ export interface SampleMethodNested {
   name: string;
 }
 
+export interface SampleTypeNested {
+  id: number;
+  name: string;
+  description: string;
+  isActive: boolean;
+}
+
+export interface LocusResultNested {
+  id: number;
+  sampleId: number;
+  locusName: string;
+  firstAllele: string;
+  secondAllele: string;
+}
+
 export interface SampleItem {
   id: number;
   participants?: Participant[];
@@ -44,6 +61,12 @@ export interface SampleItem {
   sampleMethod?: SampleMethodNested;
   shippingProvider?: string;
   trackingNumber?: string;
+  participantName: string;
+  relationship: string;
+  sampleCode: string;
+  locusResults: LocusResultNested[];
+  sampleType: SampleTypeNested;
+  fingerprintImagePath: string;
 }
 
 export interface GetAllSamplesResponse {

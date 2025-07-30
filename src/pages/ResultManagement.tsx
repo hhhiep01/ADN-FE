@@ -48,9 +48,11 @@ function AdnReportPreview({ data }: { data: any }) {
             <tr className="bg-gray-100">
               <th className="border px-2 py-1">Mẫu</th>
               <th className="border px-2 py-1">Mã mẫu</th>
+              <th className="border px-2 py-1">Loại mẫu xét nghiệm</th>
               <th className="border px-2 py-1">Người gửi mẫu</th>
               <th className="border px-2 py-1">Mối quan hệ</th>
               <th className="border px-2 py-1">Ngày lấy mẫu</th>
+              <th className="border px-2 py-1">Hình ảnh vân tay</th>
             </tr>
           </thead>
           <tbody>
@@ -58,9 +60,21 @@ function AdnReportPreview({ data }: { data: any }) {
               <tr key={idx}>
                 <td className="border px-2 py-1">Mẫu {idx + 1}</td>
                 <td className="border px-2 py-1">{s.sampleCode || "-"}</td>
+                <td className="border px-2 py-1">{s.sampleType?.name || "-"}</td>
                 <td className="border px-2 py-1">{s.participantName || "-"}</td>
                 <td className="border px-2 py-1">{s.relationship || "-"}</td>
                 <td className="border px-2 py-1">{s.collectionDate ? new Date(s.collectionDate).toLocaleDateString() : "-"}</td>
+                <td className="border px-2 py-1">
+                  {s.fingerprintImagePath ? (
+                    <img
+                      src={s.fingerprintImagePath}
+                      alt="Fingerprint"
+                      className="w-16 h-12 object-cover rounded border"
+                    />
+                  ) : (
+                    <span className="text-gray-400 text-xs">Không có</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -93,7 +107,7 @@ function AdnReportPreview({ data }: { data: any }) {
       </div>
       <div className="mb-2">
         <div className="font-semibold">Kết luận:</div>
-        <div>{data.conclusion || "-"}</div>
+        <div>{data.result?.conclusion || data.conclusion || "-"}</div>
       </div>
     </div>
   );
@@ -539,15 +553,11 @@ const ResultManagement = () => {
       conclusion: "",
       filePath: "",
     });
-    setSelectedCreateFile(null);
-    setUploadedCreateFilePath(null);
     setShowCreateModal(true);
   };
 
   const handleCreateModalClose = () => {
     setShowCreateModal(false);
-    setSelectedCreateFile(null);
-    setUploadedCreateFilePath(null);
   };
 
   const handleCreateFormChange = (
@@ -626,17 +636,12 @@ const ResultManagement = () => {
 
   const handleCreateFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted", { createFormData, uploadedCreateFilePath });
-
-    if (!uploadedCreateFilePath) {
-      alert("Vui lòng tải lên file trước khi thêm kết quả!");
-      return;
-    }
+    console.log("Form submitted", { createFormData });
 
     try {
       const payload: any = {
         ...createFormData,
-        filePath: uploadedCreateFilePath,
+        filePath: "", // Để trống filePath, sẽ update sau
       };
 
       console.log("Submitting payload:", payload);
@@ -710,9 +715,11 @@ const ResultManagement = () => {
               <tr style="background-color: #f3f4f6;">
                 <th style="border: 1px solid #000; padding: 5px; text-align: center;">Mẫu</th>
                 <th style="border: 1px solid #000; padding: 5px; text-align: center;">Mã mẫu</th>
+                <th style="border: 1px solid #000; padding: 5px; text-align: center;">Loại mẫu xét nghiệm</th>
                 <th style="border: 1px solid #000; padding: 5px; text-align: center;">Người gửi mẫu</th>
                 <th style="border: 1px solid #000; padding: 5px; text-align: center;">Mối quan hệ</th>
                 <th style="border: 1px solid #000; padding: 5px; text-align: center;">Ngày lấy mẫu</th>
+                <th style="border: 1px solid #000; padding: 5px; text-align: center;">Hình ảnh vân tay</th>
               </tr>
             </thead>
             <tbody>
@@ -720,9 +727,16 @@ const ResultManagement = () => {
                 <tr>
                   <td style="border: 1px solid #000; padding: 5px; text-align: center;">Mẫu ${idx + 1}</td>
                   <td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.sampleCode || "-"}</td>
+                  <td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.sampleType?.name || "-"}</td>
                   <td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.participantName || "-"}</td>
                   <td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.relationship || "-"}</td>
                   <td style="border: 1px solid #000; padding: 5px; text-align: center;">${s.collectionDate ? new Date(s.collectionDate).toLocaleDateString() : "-"}</td>
+                  <td style="border: 1px solid #000; padding: 5px; text-align: center;">
+                    ${s.fingerprintImagePath ? 
+                      `<img src="${s.fingerprintImagePath}" style="width: 60px; height: 40px; object-fit: cover; border: 1px solid #ccc;" alt="Fingerprint" />` : 
+                      '<span style="color: #999; font-size: 10px;">Không có</span>'
+                    }
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -757,7 +771,7 @@ const ResultManagement = () => {
         
         <div style="margin-bottom: 15px;">
           <div style="font-weight: bold; margin-bottom: 5px;">Kết luận:</div>
-          <div>${testOrderPreview.conclusion || "-"}</div>
+          <div>${testOrderPreview.result?.conclusion || testOrderPreview.conclusion || "-"}</div>
         </div>
       `;
       
@@ -1124,62 +1138,6 @@ const ResultManagement = () => {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 ></textarea>
               </div>
-              <div className="mb-4">
-                <label
-                  htmlFor="createFilePath"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Đường dẫn tệp
-                </label>
-                <input
-                  type="file"
-                  id="createFilePath"
-                  name="filePath"
-                  accept=".pdf"
-                  onChange={(e) => {
-                    const file = e.target.files ? e.target.files[0] : null;
-                    if (file) {
-                      // Kiểm tra loại file
-                      if (file.type !== "application/pdf") {
-                        alert("Chỉ chấp nhận file PDF! Vui lòng chọn file PDF.");
-                        e.target.value = "";
-                        setSelectedCreateFile(null);
-                        return;
-                      }
-                      
-                      // Kiểm tra kích thước file (max 10MB)
-                      const maxSize = 10 * 1024 * 1024; // 10MB
-                      if (file.size > maxSize) {
-                        alert("File quá lớn! Kích thước tối đa là 10MB.");
-                        e.target.value = "";
-                        setSelectedCreateFile(null);
-                        return;
-                      }
-                    }
-                    setSelectedCreateFile(file);
-                  }}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  required
-                />
-                {uploadedCreateFilePath && (
-                  <a
-                    href={uploadedCreateFilePath}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline mt-2 inline-block"
-                  >
-                    📄 Xem file đã tải lên
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleCreateFileUpload(selectedCreateFile!)}
-                  disabled={!selectedCreateFile || isCreatingUploading}
-                  className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {isCreatingUploading ? "Đang tải..." : "Tải lên file"}
-                </button>
-              </div>
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
@@ -1191,11 +1149,9 @@ const ResultManagement = () => {
                 <button
                   type="submit"
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  disabled={
-                    createResultMutation.isPending || !uploadedCreateFilePath
-                  }
+                  disabled={createResultMutation.isPending}
                 >
-                  Thêm
+                  {createResultMutation.isPending ? "Đang thêm..." : "Thêm"}
                 </button>
               </div>
             </form>

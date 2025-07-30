@@ -24,6 +24,9 @@ import StaffVerifyEmail from "./pages/StaffVerifyEmail";
 import ServiceManagement from "./pages/ServiceManagement";
 import BlogDetail from "./pages/BlogDetail";
 import BlogManagement from "./pages/BlogManagement";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentFail from "./pages/PaymentFail";
+import SampleTypeManagement from "./pages/SampleTypeManagement";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import CustomerHistory from "./pages/CustomerHistory";
 
@@ -123,6 +126,26 @@ function App() {
             }
           />
 
+          {/* Payment Success Route */}
+          <Route
+            path="/paymentsuccess"
+            element={
+              <Layout>
+                <PaymentSuccess />
+              </Layout>
+            }
+          />
+
+          {/* Payment Fail Route */}
+          <Route
+            path="/paymentfail"
+            element={
+              <Layout>
+                <PaymentFail />
+              </Layout>
+            }
+          />
+
           {/* Admin Routes */}
           <Route
             path="/admin/users"
@@ -192,6 +215,16 @@ function App() {
               <AdminLayout>
                 <ProtectedRoute allowedRoles={["staff"]}>
                   <ServiceManagement />
+                </ProtectedRoute>
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/staff/sample-types"
+            element={
+              <AdminLayout>
+                <ProtectedRoute allowedRoles={["staff"]}>
+                  <SampleTypeManagement />
                 </ProtectedRoute>
               </AdminLayout>
             }

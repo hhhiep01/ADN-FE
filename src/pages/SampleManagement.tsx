@@ -119,6 +119,8 @@ const SampleManagement = () => {
         notes: "",
         participantName: "",
         relationship: "",
+        sampleTypeId: 0,
+        fingerprintImagePath: "",
       },
     ],
   });
@@ -188,13 +190,31 @@ const SampleManagement = () => {
     error: errorSamplesByTestOrder,
   } = useQuery<GetSampleByTestOrderResponse>({
     queryKey: ["samplesByTestOrder", selectedTestOrderId],
-    queryFn: ({ signal }) =>
-      getSampleByTestOrder({
+    queryFn: ({ signal }) => {
+      console.log("Calling getSampleByTestOrder with testOrderId:", selectedTestOrderId);
+      return getSampleByTestOrder({
         signal,
         testOrderId: selectedTestOrderId!,
-      }),
+      });
+    },
     enabled: !!selectedTestOrderId, // Chỉ chạy khi có selectedTestOrderId
+    retry: 1, // Retry 1 lần nếu lỗi
+    retryDelay: 1000, // Delay 1 giây trước khi retry
   });
+
+  // Function để handle search
+  const handleSearchByTestOrderId = () => {
+    if (selectedTestOrderId) {
+      console.log("Searching for test order ID:", selectedTestOrderId);
+      // Force refetch the query
+      queryClient.invalidateQueries({ queryKey: ["samplesByTestOrder", selectedTestOrderId] });
+    }
+  };
+
+  // Function để clear search
+  const handleClearSearch = () => {
+    setSelectedTestOrderId(null);
+  };
 
   // Mutation xóa mẫu xét nghiệm
   const deleteSampleMutation = useMutation({
@@ -248,6 +268,8 @@ const SampleManagement = () => {
             notes: "",
             participantName: "",
             relationship: "",
+            sampleTypeId: 0,
+            fingerprintImagePath: "",
           },
         ],
       });
@@ -503,6 +525,8 @@ const SampleManagement = () => {
           notes: "",
           participantName: "",
           relationship: "",
+          sampleTypeId: 0,
+          fingerprintImagePath: "",
         },
       ],
     });
@@ -665,7 +689,20 @@ const SampleManagement = () => {
                 className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={selectedTestOrderId || ""}
                 onChange={(e) => setSelectedTestOrderId(e.target.value ? Number(e.target.value) : null)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && selectedTestOrderId) {
+                    handleSearchByTestOrderId();
+                  }
+                }}
               />
+              <button
+                type="button"
+                onClick={handleSearchByTestOrderId}
+                disabled={!selectedTestOrderId}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Tìm kiếm
+              </button>
             </div>
           </div>
         </div>
@@ -707,7 +744,10 @@ const SampleManagement = () => {
                 Mã vận đơn
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Thông tin người tham gia
+                Loại mẫu
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Hình ảnh vân tay
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Thêm Locus
@@ -728,7 +768,7 @@ const SampleManagement = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {sample.sampleCode}
+                        {sample.sampleCode || sample.id}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -760,15 +800,27 @@ const SampleManagement = () => {
                       <div className="text-sm text-gray-900">{sample.notes}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{sample.shippingProvider}</div>
+                      <div className="text-sm text-gray-900">{sample.shippingProvider || "-"}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{sample.trackingNumber}</div>
+                      <div className="text-sm text-gray-900">{sample.trackingNumber || "-"}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        <div>Người tham gia: {sample.participantName}</div>
-                        <div>Mối quan hệ: {sample.relationship}</div>
+                        {sample.sampleType ? sample.sampleType.name : "-"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {sample.fingerprintImagePath ? (
+                          <img 
+                            src={sample.fingerprintImagePath} 
+                            alt="Fingerprint" 
+                            className="w-16 h-12 object-cover rounded border"
+                          />
+                        ) : (
+                          <span className="text-gray-400 text-xs">Không có</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -794,20 +846,30 @@ const SampleManagement = () => {
               })
             ) : selectedTestOrderId && isLoadingSamplesByTestOrder ? (
               <tr>
-                <td colSpan={12} className="px-6 py-4 text-center text-gray-600">
+                <td colSpan={14} className="px-6 py-4 text-center text-gray-600">
                   Đang tải dữ liệu theo đơn hẹn...
                 </td>
               </tr>
             ) : selectedTestOrderId && isErrorSamplesByTestOrder ? (
               <tr>
-                <td colSpan={12} className="px-6 py-4 text-center text-red-600">
-                  Lỗi: {errorSamplesByTestOrder?.message || "Không tìm thấy mẫu cho đơn hẹn này"}
+                <td colSpan={14} className="px-6 py-4 text-center text-red-600">
+                  <div className="mb-2">
+                    <strong>Lỗi khi tìm kiếm mẫu cho đơn hẹn {selectedTestOrderId}:</strong>
+                  </div>
+                  <div className="text-sm text-red-500 mb-2">
+                    {errorSamplesByTestOrder?.message || "Không thể kết nối đến server"}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Vui lòng kiểm tra lại ID đơn hẹn hoặc thử lại sau. 
+                    Nếu vấn đề vẫn tiếp tục, hãy liên hệ admin.
+                  </div>
                 </td>
               </tr>
             ) : selectedTestOrderId && samplesByTestOrderData.length === 0 ? (
               <tr>
-                <td colSpan={12} className="px-6 py-4 text-center text-gray-600">
-                  Không tìm thấy mẫu nào cho đơn hẹn {selectedTestOrderId}
+                <td colSpan={14} className="px-6 py-4 text-center text-gray-600">
+                  <div className="mb-2">Không tìm thấy mẫu nào cho đơn hẹn {selectedTestOrderId}</div>
+                  <div className="text-sm text-gray-500">Vui lòng kiểm tra lại ID đơn hẹn</div>
                 </td>
               </tr>
             ) : (
@@ -820,7 +882,7 @@ const SampleManagement = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {sample.id}
+                        {sample.sampleCode || sample.id}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -852,22 +914,26 @@ const SampleManagement = () => {
                       <div className="text-sm text-gray-900">{sample.notes}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{sample.shippingProvider}</div>
+                      <div className="text-sm text-gray-900">{sample.shippingProvider || "-"}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{sample.trackingNumber}</div>
+                      <div className="text-sm text-gray-900">{sample.trackingNumber || "-"}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {sample.participants && sample.participants.length > 0 ? (
-                          sample.participants.map((participant, index) => (
-                            <div key={index}>
-                              <div>Người tham gia: {participant.participantName}</div>
-                              <div>Mối quan hệ: {participant.relationship}</div>
-                            </div>
-                          ))
+                        {sample.sampleType ? sample.sampleType.name : "-"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {sample.fingerprintImagePath ? (
+                          <img 
+                            src={sample.fingerprintImagePath} 
+                            alt="Fingerprint" 
+                            className="w-16 h-12 object-cover rounded border"
+                          />
                         ) : (
-                          <span className="text-gray-400">Không có thông tin</span>
+                          <span className="text-gray-400 text-xs">Không có</span>
                         )}
                       </div>
                     </td>

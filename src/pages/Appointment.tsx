@@ -17,6 +17,7 @@ import { useGetAllServices } from "../Services/ServiceService/GetAllServices";
 import { useGetUserProfile } from "../Services/UserAccountService/GetUserProfile";
 import type { Service } from "../Services/ServiceService/GetAllServices";
 import { createSample, type CreateSampleRequest } from "../Services/SampleService/CreateSample";
+import { createPayment } from "../Services/PaymentService/PaymentService";
 
 interface DuLieuDatLich {
   hoTen: string;
@@ -35,6 +36,11 @@ const Appointment = () => {
   const [thongBaoLoi, setThongBaoLoi] = useState<string>("");
   const [thongBaoThanhCong, setThongBaoThanhCong] = useState<string>("");
   const [appointmentDateTime, setAppointmentDateTime] = useState("");
+  
+  // State để theo dõi thay đổi trong form
+  const [formChanges, setFormChanges] = useState<{
+    [key: string]: { oldValue: string; newValue: string; timestamp: Date }
+  }>({});
 
   const [formData, setFormData] = useState<DuLieuDatLich>({
     hoTen: "",
@@ -57,11 +63,15 @@ const Appointment = () => {
   useEffect(() => {
     if (userProfileResponse?.isSuccess && userProfileResponse.result) {
       const userProfile = userProfileResponse.result;
-      setFormData((prev) => ({
-        ...prev,
+      const newFormData = {
         hoTen: `${userProfile.firstName} ${userProfile.lastName}`.trim(),
         email: userProfile.email || "",
         soDienThoai: userProfile.phoneNumber || "",
+      };
+      
+      setFormData((prev) => ({
+        ...prev,
+        ...newFormData,
       }));
     }
   }, [userProfileResponse]);
@@ -91,14 +101,45 @@ const Appointment = () => {
   const { mutate: taoDonDatLich, isPending: isTaoDonDatLichPending } =
     useCreateTestOrder();
 
+  // Function để reset form
+  const resetForm = () => {
+    setFormData({
+      hoTen: "",
+      email: "",
+      soDienThoai: "",
+      phuongThucThuMauId: "",
+      loaiXetNghiemId: selectedService ? selectedService.id.toString() : "",
+      appointmentDate: "",
+      appointmentLocation: "",
+    });
+    setAppointmentDateTime("");
+    setThongBaoLoi("");
+    setThongBaoThanhCong("");
+    setFormChanges({});
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
+    const oldValue = formData[name as keyof DuLieuDatLich] || "";
+    
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
+    
+    // Theo dõi thay đổi nếu giá trị thực sự thay đổi
+    if (oldValue !== value) {
+      setFormChanges((prev) => ({
+        ...prev,
+        [name]: {
+          oldValue,
+          newValue: value,
+          timestamp: new Date(),
+        },
+      }));
+    }
     
     // Nếu chọn "Lấy mẫu tại trung tâm" (id: 2), xóa địa điểm hẹn
     if (name === "phuongThucThuMauId" && value === "2") {
@@ -106,16 +147,45 @@ const Appointment = () => {
         ...prev,
         appointmentLocation: "",
       }));
+      
+      // Theo dõi thay đổi địa điểm hẹn
+      if (formData.appointmentLocation) {
+        setFormChanges((prev) => ({
+          ...prev,
+          appointmentLocation: {
+            oldValue: formData.appointmentLocation,
+            newValue: "",
+            timestamp: new Date(),
+          },
+        }));
+      }
     }
     
     setThongBaoLoi("");
     setThongBaoThanhCong("");
   };
 
+  // Function để log thay đổi form
+  const logFormChanges = () => {
+    if (Object.keys(formChanges).length > 0) {
+      console.log("=== THAY ĐỔI TRONG FORM ===");
+      Object.entries(formChanges).forEach(([field, change]) => {
+        console.log(`${field}:`);
+        console.log(`  - Giá trị cũ: "${change.oldValue}"`);
+        console.log(`  - Giá trị mới: "${change.newValue}"`);
+        console.log(`  - Thời gian: ${change.timestamp.toLocaleString()}`);
+      });
+      console.log("==========================");
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setThongBaoLoi("");
     setThongBaoThanhCong("");
+
+    // Log thay đổi form trước khi submit
+    logFormChanges();
 
     // Kiểm tra dữ liệu trước khi gửi
     if (!formData.hoTen.trim()) {
@@ -158,24 +228,51 @@ const Appointment = () => {
     };
 
     taoDonDatLich(requestData, {
-      onSuccess: () => {
-        setThongBaoThanhCong(
-          "Đặt lịch thành công! Chúng tôi sẽ liên hệ với bạn trong thời gian sớm nhất."
-        );
-        setFormData({
-          hoTen: "",
-          email: "",
-          soDienThoai: "",
-          phuongThucThuMauId: "",
-          loaiXetNghiemId: "",
-          appointmentDate: "",
-          appointmentLocation: "",
-        });
-        setThongBaoLoi("");
+      onSuccess: async (testOrderResponse) => {
+        try {
+          // Kiểm tra xem test order có được tạo thành công không
+          if (testOrderResponse.isSuccess && testOrderResponse.result) {
+            const testOrderId = testOrderResponse.result;
+            
+            // Tạo payment với test order ID
+            const paymentResponse = await createPayment({
+              testOrderId: testOrderId
+            });
+            
+            // Kiểm tra xem payment có được tạo thành công không
+            if (paymentResponse.isSuccess && paymentResponse.result) {
+              // Reset form trước khi chuyển hướng
+              resetForm();
+              // Reset form changes
+              setFormChanges({});
+              
+              // Chuyển hướng đến trang thanh toán VNPay
+              window.location.href = paymentResponse.result;
+            } else {
+              setThongBaoLoi("Tạo thanh toán thất bại. Vui lòng thử lại.");
+              // Reset form khi thanh toán thất bại
+              resetForm();
+              setFormChanges({});
+            }
+          } else {
+            setThongBaoLoi("Tạo đơn đặt lịch thất bại. Vui lòng thử lại.");
+            // Reset form khi tạo đơn đặt lịch thất bại
+            resetForm();
+            setFormChanges({});
+          }
+        } catch (error: any) {
+          setThongBaoLoi(parseErrorMessage(error));
+          // Reset form khi có lỗi
+          resetForm();
+          setFormChanges({});
+        }
       },
       onError: (error: any) => {
         setThongBaoLoi(parseErrorMessage(error));
         setThongBaoThanhCong("");
+        // Reset form khi có lỗi
+        resetForm();
+        setFormChanges({});
       },
     });
   };

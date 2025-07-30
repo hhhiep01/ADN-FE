@@ -5,6 +5,7 @@ import type { TestOrderCustomer } from "../Services/TestOrderService/GetTestOrde
 import { updateTestOrderDeliveryStatus } from "../Services/TestOrderService/UpdateTestOrderDeliveryStatus";
 import { useQueryClient } from "@tanstack/react-query";
 import { createSample, type CreateSampleRequest, type Participant } from "../Services/SampleService/CreateSample";
+import { useGetAllSampleTypes } from "../Services/SampleTypeService/GetAllSampleTypes";
 
 interface Service {
   id: number;
@@ -47,13 +48,15 @@ const CustomerHistory: React.FC = () => {
   const [shippingProvider, setShippingProvider] = React.useState("");
   const [trackingNumber, setTrackingNumber] = React.useState("");
 
+  // Sample types query
+  const { data: sampleTypesData, isLoading: isLoadingSampleTypes } = useGetAllSampleTypes();
+  const sampleTypes = sampleTypesData?.result || [];
+
   // State for sample creation modal
   const [showSampleModal, setShowSampleModal] = React.useState(false);
   const [selectedOrderForSample, setSelectedOrderForSample] = React.useState<TestOrderCustomer | null>(null);
   const [sampleFormData, setSampleFormData] = React.useState<CreateSampleRequest>({
     testOrderId: 0,
-    shippingProvider: "",
-    trackingNumber: "",
     participants: [
       {
         collectionDate: "",
@@ -61,6 +64,8 @@ const CustomerHistory: React.FC = () => {
         notes: "",
         participantName: "",
         relationship: "",
+        sampleTypeId: 0,
+        fingerprintImagePath: "",
       },
       {
         collectionDate: "",
@@ -68,6 +73,8 @@ const CustomerHistory: React.FC = () => {
         notes: "",
         participantName: "",
         relationship: "",
+        sampleTypeId: 0,
+        fingerprintImagePath: "",
       },
     ],
   });
@@ -147,8 +154,6 @@ const CustomerHistory: React.FC = () => {
     setSelectedOrderForSample(order);
     setSampleFormData({
       testOrderId: order.id,
-      shippingProvider: "",
-      trackingNumber: "",
       participants: [
         {
           collectionDate: order.appointmentDate,
@@ -156,6 +161,8 @@ const CustomerHistory: React.FC = () => {
           notes: "",
           participantName: order.userName || order.fullName || "",
           relationship: "Chính",
+          sampleTypeId: 0,
+          fingerprintImagePath: "",
         },
         {
           collectionDate: order.appointmentDate,
@@ -163,6 +170,8 @@ const CustomerHistory: React.FC = () => {
           notes: "",
           participantName: "",
           relationship: "",
+          sampleTypeId: 0,
+          fingerprintImagePath: "",
         },
       ],
     });
@@ -373,6 +382,27 @@ const CustomerHistory: React.FC = () => {
                           onChange={(e) => handleParticipantChange(index, "collectionDate", e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Loại mẫu xét nghiệm
+                        </label>
+                        <select
+                          value={participant.sampleTypeId}
+                          onChange={(e) => handleParticipantChange(index, "sampleTypeId", Number(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={isLoadingSampleTypes}
+                        >
+                          <option value={0}>Chọn loại mẫu</option>
+                          {sampleTypes.map((sampleType) => (
+                            <option key={sampleType.id} value={sampleType.id}>
+                              {sampleType.name}
+                            </option>
+                          ))}
+                        </select>
+                        {isLoadingSampleTypes && (
+                          <p className="text-sm text-gray-500 mt-1">Đang tải danh sách loại mẫu...</p>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
