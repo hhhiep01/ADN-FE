@@ -29,6 +29,7 @@ import PaymentFail from "./pages/PaymentFail";
 import SampleTypeManagement from "./pages/SampleTypeManagement";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import CustomerHistory from "./pages/CustomerHistory";
+import TransactionHistory from "./pages/TransactionHistory";
 
 const queryClient = new QueryClient();
 
@@ -153,6 +154,16 @@ function App() {
               <AdminLayout>
                 <ProtectedRoute allowedRoles={["admin"]}>
                   <UserManagement />
+                </ProtectedRoute>
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/admin/transaction-history"
+            element={
+              <AdminLayout>
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <TransactionHistory />
                 </ProtectedRoute>
               </AdminLayout>
             }

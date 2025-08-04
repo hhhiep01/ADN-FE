@@ -319,8 +319,8 @@ const CustomerHistory: React.FC = () => {
                   <input
                     type="text"
                     name="shippingProvider"
-                    value={sampleFormData.shippingProvider}
-                    onChange={handleSampleFormChange}
+                    value={shippingProvider}
+                    onChange={(e) => setShippingProvider(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nhập đơn vị vận chuyển"
                   />
@@ -332,8 +332,8 @@ const CustomerHistory: React.FC = () => {
                   <input
                     type="text"
                     name="trackingNumber"
-                    value={sampleFormData.trackingNumber}
-                    onChange={handleSampleFormChange}
+                    value={trackingNumber}
+                    onChange={(e) => setTrackingNumber(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nhập mã vận đơn"
                   />
@@ -408,16 +408,13 @@ const CustomerHistory: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Trạng thái mẫu
                         </label>
-                        <select
-                          value={participant.sampleStatus}
-                          onChange={(e) => handleParticipantChange(index, "sampleStatus", Number(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value={0}>Chờ xử lý</option>
-                          <option value={1}>Đang xử lý</option>
-                          <option value={2}>Hoàn thành</option>
-                          <option value={3}>Đã hủy</option>
-                        </select>
+                        <input
+                          type="text"
+                          value="Chờ xử lý"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed"
+                          readOnly
+                          disabled
+                        />
                       </div>
                       <div className="col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
