@@ -8,6 +8,7 @@ import { getTestOrderById } from '../Services/TestOrderService/GetTestOrderById'
 import { uploadFile } from '../Services/FileService/UploadFile';
 import { downloadAndOpenFile } from '../Services/FileService/DownloadFile';
 import { apiLinks } from '../Services/MainService';
+import { validateLocusResultsForTestOrder } from './SampleManagement';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -151,6 +152,13 @@ const ResultManagement = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [testOrderPreview, setTestOrderPreview] = useState<any>(null);
   const [isChecking, setIsChecking] = useState(false);
+
+  // State for update file path modal
+  const [showUpdateFileModal, setShowUpdateFileModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [currentFilePath, setCurrentFilePath] = useState<string>("");
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [currentResult, setCurrentResult] = useState<any>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["results"],
@@ -314,6 +322,28 @@ const ResultManagement = () => {
       throw new Error(errorData.error?.message || "Cloudinary upload failed");
     }
 
+    const data = await response.json();
+    return data.secure_url;
+  };
+
+  // Hàm upload file lên Cloudinary
+  const uploadFileToCloudinary = async (file: File): Promise<string> => {
+    const CLOUDINARY_CLOUD_NAME = "dku0qdaan";
+    const CLOUDINARY_UPLOAD_PRESET = "ADN_SWP";
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error.message || "Cloudinary upload failed");
+    }
     const data = await response.json();
     return data.secure_url;
   };
@@ -639,6 +669,14 @@ const ResultManagement = () => {
     console.log("Form submitted", { createFormData });
 
     try {
+      // Validate locus results before creating result
+      const validation = await validateLocusResultsForTestOrder(createFormData.testOrderId);
+      
+      if (!validation.isValid) {
+        alert(validation.message);
+        return;
+      }
+
       const payload: any = {
         ...createFormData,
         filePath: "", // Để trống filePath, sẽ update sau
@@ -944,10 +982,14 @@ const ResultManagement = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button
-                    onClick={() => handleUpdateClick(result)}
+                    onClick={() => {
+                      setCurrentResult(result);
+                      setCurrentFilePath(result.filePath || "");
+                      setShowUpdateFileModal(true);
+                    }}
                     className="text-green-600 hover:text-green-900 mr-3"
                   >
-                    Cập nhật
+                    Cập nhật file
                   </button>
                   <button
                     onClick={() => handleDeleteResult(result.id)}
@@ -1208,6 +1250,122 @@ const ResultManagement = () => {
               >
                 {isExporting ? "Đang lấy dữ liệu..." : "Lấy dữ liệu & Xuất PDF"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal cập nhật file */}
+      {showUpdateFileModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-xl font-semibold mb-4">Cập nhật kết quả</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Đường dẫn tệp
+                </label>
+                <div className="flex items-center space-x-2 mb-2">
+                  <input
+                    type="file"
+                    onChange={(e) => setSelectedFile(e.target.files ? e.target.files[0] : null)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+                  >
+                    Chọn tệp
+                  </button>
+                </div>
+                
+                {currentFilePath && (
+                  <div className="text-sm text-gray-600 mb-2">
+                    File hiện tại: {currentFilePath}
+                  </div>
+                )}
+                
+                <div className="flex items-center space-x-2 mb-2">
+                  <button
+                    type="button"
+                    className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+                    onClick={() => {
+                      if (currentFilePath) {
+                        window.open(currentFilePath, '_blank');
+                      }
+                    }}
+                  >
+                    📄 Xem file hiện tại
+                  </button>
+                </div>
+                
+
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowUpdateFileModal(false);
+                  setSelectedFile(null);
+                  setCurrentFilePath("");
+                  setCurrentResult(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+                              <button
+                  onClick={async () => {
+                    if (!currentResult) {
+                      alert("Không tìm thấy thông tin kết quả!");
+                      return;
+                    }
+                    
+                    if (!selectedFile) {
+                      alert("Vui lòng chọn file trước khi cập nhật!");
+                      return;
+                    }
+                    
+                    setIsUploadingFile(true);
+                    try {
+                      // Sử dụng API UploadFile.ts thay vì UpdateResult.ts
+                      const uploadResponse = await uploadFile(selectedFile);
+                      
+                      if (uploadResponse.fileName && uploadResponse.path) {
+                        // Tạo URL download từ fileName
+                        const downloadUrl = apiLinks.Files.download(uploadResponse.fileName);
+                        
+                        // Cập nhật kết quả với đường dẫn file mới
+                        await updateResultMutation.mutateAsync({
+                          id: currentResult.id,
+                          testOrderId: currentResult.testOrderId,
+                          resultDate: currentResult.resultDate,
+                          conclusion: currentResult.conclusion,
+                          filePath: downloadUrl,
+                        });
+                        
+                        setShowUpdateFileModal(false);
+                        setSelectedFile(null);
+                        setCurrentFilePath("");
+                        setCurrentResult(null);
+                        alert("Cập nhật file thành công!");
+                      } else {
+                        throw new Error("Upload failed - invalid response");
+                      }
+                    } catch (error: any) {
+                      console.error("Error updating file:", error);
+                      alert(`Lỗi cập nhật file: ${error.message}`);
+                    } finally {
+                      setIsUploadingFile(false);
+                    }
+                  }}
+                  disabled={!selectedFile || isUploadingFile}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUploadingFile ? "Đang cập nhật..." : "Cập nhật file"}
+                </button>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-const baseUrl = "https://6d17d53e45d3.ngrok-free.app/api";
+const baseUrl = "https://dd8db7fe99e6.ngrok-free.app/api";
 
 export const queryClient = new QueryClient();
 
@@ -67,6 +67,8 @@ export const apiLinks = {
     // Quản lý tài khoản người dùng
     getUserProfile: `${baseUrl}/UserAccount/GetUserProfile`,
     updateUserProfile: `${baseUrl}/UserAccount/UpdateUserProfile`,
+    getAllAccounts: `${baseUrl}/UserAccount/GetAllAccountAsync`,
+    getAllStaffAccounts: `${baseUrl}/UserAccount/GetAllStaffAccountAsync`,
   },
   Comment: {
     // Quản lý bình luận cho blog
@@ -91,9 +93,10 @@ export const apiLinks = {
     download: (fileName: string) => `${baseUrl}/Files/download/${fileName}`,
   },
   Payment: {
-    // Quản lý thanh toán: tạo thanh toán và callback
+    // Quản lý thanh toán: tạo thanh toán, callback và lịch sử
     create: `${baseUrl}/Payment`,
     callback: `${baseUrl}/Payment/callback`,
+    getAll: `${baseUrl}/Payment/history`,
   },
   SampleType: {
     // Quản lý loại mẫu: lấy, tạo, cập nhật, xóa

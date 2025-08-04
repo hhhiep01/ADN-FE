@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   type TestOrderItem,
   getAllTestOrders,
@@ -56,6 +56,8 @@ const AppointmentManagement = () => {
   const [sendKitForm, setSendKitForm] = useState<UpdateTestOrderRequest | null>(null);
   const [sendingKit, setSendingKit] = useState(false);
 
+
+
   // State for sample creation modal
   const [showSampleModal, setShowSampleModal] = useState(false);
   const [selectedAppointmentForSample, setSelectedAppointmentForSample] = useState<TestOrderItem | null>(null);
@@ -109,6 +111,8 @@ const AppointmentManagement = () => {
     }
   };
 
+
+
   // Hàm upload ảnh vân tay lên Cloudinary
   const uploadFingerprintImageToCloudinary = async (file: File): Promise<string> => {
     const CLOUDINARY_CLOUD_NAME = "dku0qdaan";
@@ -130,6 +134,8 @@ const AppointmentManagement = () => {
     const data = await response.json();
     return data.secure_url;
   };
+
+
 
   const queryClient = useQueryClient();
 
@@ -214,6 +220,15 @@ const AppointmentManagement = () => {
   const appointments = data?.result?.items || [];
   const totalItems = data?.result?.total || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  // Check samples for all appointments when data loads
+  useEffect(() => {
+    if (appointments.length > 0) {
+      appointments.forEach(appointment => {
+        checkAppointmentSamples(appointment.id);
+      });
+    }
+  }, [appointments]);
 
   const getStatusColor = (status: number) => {
     switch (status) {
@@ -621,7 +636,7 @@ const AppointmentManagement = () => {
                     className="px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     disabled={updateAppointmentStatusMutation.isPending}
                   >
-                    <option value={0}>Chờ xác nhận</option>
+                    <option value={0} disabled={appointment.status === 1}>Chờ xác nhận</option>
                     <option value={1}>Đã xác nhận</option>
                   </select>
                 </td>
@@ -630,31 +645,34 @@ const AppointmentManagement = () => {
                     className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={appointment.status !== 1 || appointment.sampleMethods.id === 1 || appointmentsWithSamples.has(appointment.id) || isCheckingSamples[appointment.id]}
                     onClick={() => handleShowSampleModal(appointment)}
-                    onMouseEnter={() => checkAppointmentSamples(appointment.id)}
                   >
                     {isCheckingSamples[appointment.id] ? "Đang kiểm tra..." : 
                      appointmentsWithSamples.has(appointment.id) ? "Đã thêm mẫu" : "Thêm mẫu xét nghiệm"}
                   </button>
-                  {/* Button gửi kit test - now opens editable modal */}
-                  <button
-                    className="ml-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={updateDeliveryStatusMutation.isPending || appointment.sampleMethods.id === 2}
-                    onClick={() => {
-                      setSendKitForm({
-                        id: appointment.id,
-                        serviceId: appointment.services.id,
-                        sampleMethodId: appointment.sampleMethods.id,
-                        phoneNumber: appointment.phoneNumber,
-                        email: appointment.email,
-                        fullName: appointment.userName || appointment.fullName,
-                        appointmentDate: appointment.appointmentDate,
-                        appointmentLocation: appointment.appointmentLocation,
-                      });
-                      setShowSendKitModal(true);
-                    }}
-                  >
-                    Gửi kit test
-                  </button>
+                                     {/* Button gửi kit test - now opens editable modal */}
+                   <button
+                     className="ml-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                     disabled={updateDeliveryStatusMutation.isPending || appointment.sampleMethods.id === 2 || appointment.status !== 1 || appointment.deliveryKitStatus !== 0}
+                     onClick={() => {
+                       setSendKitForm({
+                         id: appointment.id,
+                         serviceId: appointment.services.id,
+                         sampleMethodId: appointment.sampleMethods.id,
+                         phoneNumber: appointment.phoneNumber,
+                         email: appointment.email,
+                         fullName: appointment.userName || appointment.fullName,
+                         appointmentDate: appointment.appointmentDate,
+                         appointmentLocation: appointment.appointmentLocation,
+                       });
+                       setShowSendKitModal(true);
+                     }}
+                   >
+                     {appointment.deliveryKitStatus === 0 ? "Gửi kit test" : 
+                      appointment.deliveryKitStatus === 1 ? "Đã gửi kit" :
+                      appointment.deliveryKitStatus === 2 ? "Đã gửi về" :
+                      appointment.deliveryKitStatus === 3 ? "Đã nhận kit" : "Gửi kit test"}
+                   </button>
+
                 </td>
               </tr>
             ))}
@@ -1134,10 +1152,12 @@ const AppointmentManagement = () => {
               </div>
             </form>
           </div>
-        </div>
-      )}
-    </div>
-  );
-};
+                 </div>
+       )}
+
+
+     </div>
+   );
+ };
 
 export default AppointmentManagement;

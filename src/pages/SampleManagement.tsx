@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   getAllSamples,
@@ -34,6 +34,85 @@ import { getLocusResultById, type GetLocusResultByIdResponse } from "../Services
 import { getLocusResultBySampleId, type GetLocusResultBySampleIdResponse } from "../Services/LocusResultService/GetLocusResultBySampleId";
 import { updateLocusResult } from "../Services/LocusResultService/UpdateLocusResult";
 import { useGetAllSampleMethods } from "../Services/SampleMethodService/GetAllSampleMethods";
+
+// Validation function to check if locus results exist for at least 2 subjects
+export const validateLocusResultsForTestOrder = async (testOrderId: number): Promise<{ isValid: boolean; message: string }> => {
+  try {
+    // Get all samples for the test order
+    const samplesResponse = await getSampleByTestOrder({ testOrderId });
+    const samples = samplesResponse.result;
+    
+    if (!samples || samples.length === 0) {
+      return {
+        isValid: false,
+        message: "Không tìm thấy mẫu xét nghiệm nào cho đơn hẹn này."
+      };
+    }
+    
+    // Check how many samples have locus results
+    let samplesWithLocusResults = 0;
+    const locusPromises = samples.map(async (sample: any) => {
+      try {
+        const locusResponse = await getLocusResultBySampleId({ sampleId: sample.id });
+        return locusResponse.result && locusResponse.result.length > 0;
+      } catch (error) {
+        return false;
+      }
+    });
+    
+    const locusResults = await Promise.all(locusPromises);
+    samplesWithLocusResults = locusResults.filter(hasLocus => hasLocus).length;
+    
+    if (samplesWithLocusResults < 2) {
+      return {
+        isValid: false,
+        message: `Cần thêm locus results cho ít nhất 2 đối tượng trước khi tạo kết quả. Hiện tại chỉ có ${samplesWithLocusResults} đối tượng có locus results.`
+      };
+    }
+    
+    return {
+      isValid: true,
+      message: `Đã có locus results cho ${samplesWithLocusResults} đối tượng. Có thể tạo kết quả.`
+    };
+  } catch (error) {
+    return {
+      isValid: false,
+      message: "Lỗi khi kiểm tra locus results. Vui lòng thử lại."
+    };
+  }
+};
+
+// Helper function to get locus result status for a test order
+export const getLocusResultStatusForTestOrder = async (testOrderId: number): Promise<{ totalSamples: number; samplesWithLocus: number; canCreateResult: boolean }> => {
+  try {
+    const samplesResponse = await getSampleByTestOrder({ testOrderId });
+    const samples = samplesResponse.result;
+    
+    if (!samples || samples.length === 0) {
+      return { totalSamples: 0, samplesWithLocus: 0, canCreateResult: false };
+    }
+    
+    const locusPromises = samples.map(async (sample: any) => {
+      try {
+        const locusResponse = await getLocusResultBySampleId({ sampleId: sample.id });
+        return locusResponse.result && locusResponse.result.length > 0;
+      } catch (error) {
+        return false;
+      }
+    });
+    
+    const locusResults = await Promise.all(locusPromises);
+    const samplesWithLocus = locusResults.filter(hasLocus => hasLocus).length;
+    
+    return {
+      totalSamples: samples.length,
+      samplesWithLocus,
+      canCreateResult: samplesWithLocus >= 2
+    };
+  } catch (error) {
+    return { totalSamples: 0, samplesWithLocus: 0, canCreateResult: false };
+  }
+};
 
 function useHasLocus(sampleId: number) {
   const { data } = useQuery({
@@ -74,6 +153,8 @@ function LocusActionCell({ sample, handleShowLocusModal, handleShowLocusDetail, 
     </>
   );
 }
+
+
 
 const SampleManagement = () => {
   const [selectedStatus, setSelectedStatus] = useState<number | "all">("all");
@@ -832,6 +913,7 @@ const SampleManagement = () => {
                         handleShowUpdateLocusModal={handleShowUpdateLocusModal}
                       />
                     </td>
+
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
                         onClick={() => handleDeleteSample(sample.id)}
